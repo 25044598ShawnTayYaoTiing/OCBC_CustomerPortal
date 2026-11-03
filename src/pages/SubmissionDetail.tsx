@@ -1,0 +1,57 @@
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardPenLine, FilePlus2, FileText, RefreshCw, UploadCloud, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../auth';
+import { useData, useResource } from '../data';
+import { intentFiles, useIntent } from '../lib/upload-intent';
+import type { Correction, Detail, Document } from '../types';
+import { Badge, date, Empty, ErrorBox, Loading, Notice, PageHeader, Panel, Reference, titleCase } from '../components/ui';
+import { FilePicker, UploadFeedback, useUpload } from '../components/Upload';
+import { Timeline } from '../components/Timeline';
+import { NotificationList } from '../components/Records';
+
+interface UploadTarget { document?: Document; request?: Correction; add?: boolean }
+function CorrectionDialog({ detail, target, onClose, onSuccess }: { detail: Detail; target: UploadTarget; onClose: () => void; onSuccess: (data: Detail) => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const options = target.request?.documentIds.length ? detail.documents.filter(d => target.request!.documentIds.includes(d.id)) : detail.documents;
+  const [selected, setSelected] = useState(target.document?.id || (options.length === 1 ? options[0].id : ''));
+  const path = `/submissions/${encodeURIComponent(detail.submission.id)}/documents${target.add ? '' : `/${encodeURIComponent(selected || 'select-document')}/replacement`}`;
+  const uploader = useUpload(path, `/submissions/${detail.submission.id}`);
+  const [files, setFiles] = useState<File[]>(() => uploader.initialFiles());
+  useEffect(() => { const element = dialog.current; element?.showModal(); return () => { element?.close(); }; }, []);
+  return <dialog ref={dialog} className="upload-dialog" aria-labelledby="upload-dialog-title" onCancel={e => { if (uploader.busy) e.preventDefault(); else onClose(); }}><div className="dialog-heading"><div><p className="eyebrow">YOUR EXISTING APPLICATION</p><h2 id="upload-dialog-title">{target.add ? 'Add missing documents' : 'Upload a corrected PDF'}</h2></div><button className="icon-button" aria-label="Close upload" disabled={uploader.busy} onClick={onClose}><X size={19} /></button></div><div className="dialog-content">{target.request && <Notice>{target.request.instruction}</Notice>}
+    {!target.add && <label>Document to replace<select aria-label="Document to replace" value={selected} onChange={e => { setSelected(e.target.value); setFiles([]); }} disabled={uploader.busy || !!uploader.pending}><option value="">Choose the affected document</option>{options.map(d => <option key={d.id} value={d.id}>{titleCase(d.type)} — {d.filename}</option>)}</select></label>}
+    {uploader.samePath && <p className="field-hint">Retrying your original request. Required files, in order: {uploader.pending!.files.map(f => f.name).join(', ')}.</p>}
+    <FilePicker files={files} setFiles={setFiles} max={target.add ? 10 : 1} disabled={uploader.busy} restoring={uploader.samePath} />
+    <p className="field-hint">Replacing a document retains its earlier version. Requests stay open until the service confirms successful revalidation.</p><UploadFeedback uploader={uploader} />
+    {uploader.pending && !uploader.samePath && <Notice>Another document request is awaiting confirmation. Close this dialog and use “Resume upload” on the application.</Notice>}
+  </div><div className="dialog-actions"><button className="button secondary" disabled={uploader.busy} onClick={onClose}>Cancel</button><button className="button primary" disabled={uploader.busy || !files.length || (!target.add && !selected) || !!(uploader.pending && !uploader.samePath)} onClick={async () => { const result = await uploader.submit(files); if (result) onSuccess(result); }}><UploadCloud size={16} />{uploader.busy ? 'Waiting for confirmation…' : uploader.samePath ? 'Retry original request' : target.add ? 'Upload documents' : 'Submit correction'}</button></div></dialog>;
+}
+
+export function SubmissionDetail() {
+  const { id = '' } = useParams(); const [params] = useSearchParams();
+  const result = useResource<Detail>(`/submissions/${encodeURIComponent(id)}`);
+  const { notifications } = useData(); const { profile } = useAuth(); const pending = useIntent(profile!.id);
+  const [target, setTarget] = useState<UploadTarget | null>(null); const [notice, setNotice] = useState('');
+  const data = result.data; const locked = data?.submission.status === 'OPERATIONS';
+  useEffect(() => { setTarget(null); setNotice(''); }, [id]);
+  if (result.loading) return <Panel><Loading text="Loading your application…" /></Panel>;
+  if (!data) return <div className="page-stack"><Link className="text-link" to="/submissions"><ArrowLeft size={16} />My submissions</Link><ErrorBox message={result.error || 'Submission not found.'} retry={() => void result.refresh()} /></div>;
+  const activities = (notifications.data || []).filter(n => n.submissionId === id);
+  function resume() {
+    if (!pending) return;
+    const documentId = pending.path.match(/\/documents\/([^/]+)\/replacement$/)?.[1];
+    setTarget(documentId ? { document: data!.documents.find(d => d.id === decodeURIComponent(documentId)) } : { add: true });
+  }
+  return <div className="page-stack"><Link className="back-link" to="/submissions"><ArrowLeft size={16} />My submissions</Link><PageHeader eyebrow="ACCOUNT OPENING" title="Your application" description="Your documents, next steps and recorded application status."><Badge status={data.submission.status} /><button className="button secondary" disabled={result.refreshing} onClick={() => { void result.refresh(); void notifications.refresh(); }}><RefreshCw size={16} className={result.refreshing ? 'spin' : ''} />Refresh</button></PageHeader>
+    {result.error && <ErrorBox message={result.error} retry={() => void result.refresh()} />}{notice && <Notice success>{notice}</Notice>}
+    {pending?.returnTo === `/submissions/${id}` && <Notice><strong>An upload is awaiting confirmation.</strong> <button className="text-button" onClick={resume}>Resume upload<ArrowRight size={14} /></button> Retry the exact same PDFs to check the original result safely.</Notice>}
+    <div className="application-summary"><div><small>SUBMISSION REFERENCE</small><Reference value={data.submission.caseReference} /></div><div><small>SUBMITTED</small><strong>{date(data.submission.createdAt, true)} SGT</strong></div><div><small>SUBMISSION SOURCE</small><strong>Customer Portal</strong></div><div><small>DOCUMENTS</small><strong>{data.documents.length} current {data.documents.length === 1 ? 'document' : 'documents'}</strong></div></div>
+    {locked && <div className="complete-banner"><CheckCircle2 size={26} /><div><h2>Your application is with Operations.</h2><p>The required document checks passed and handover was recorded {date(data.submission.routedAt, true)} SGT. This package is now closed to changes.</p></div></div>}
+    <div className="detail-grid"><div className="page-stack"><Panel title="Your next steps" description="Requests are generated from the service's recorded checks." action={data.corrections.length ? <span className="count-label">{data.corrections.length} outstanding</span> : undefined}>{data.corrections.length ? <div className="correction-list">{data.corrections.map(request => <article key={request.id} className={`correction-card ${params.get('request') === request.id ? 'highlighted' : ''}`}><span className="request-symbol"><ClipboardPenLine size={21} /></span><div><p className="eyebrow">{request.documentType === 'PACKAGE' ? 'CROSS-DOCUMENT REQUEST' : titleCase(request.documentType)}</p><h3>{request.instruction}</h3><p>{request.status === 'ESCALATED' ? 'Staff review is required. Provide a supported correction or contact your demo administrator.' : 'Update the original form and return the corrected PDF.'}</p><button className="button secondary small" disabled={locked} onClick={() => setTarget(request.documentIds.length ? { request } : { request, add: true })}><UploadCloud size={15} />{request.documentIds.length ? 'Upload correction' : 'Upload missing documents'}</button></div></article>)}</div> : <div className="no-requests"><CheckCircle2 size={23} /><div><strong>No outstanding customer requests</strong></div></div>}</Panel>
+      <Panel title="Your documents" description="Current documents recorded against this application." action={!locked && <button className="text-button" onClick={() => setTarget({ add: true })}><FilePlus2 size={15} />Add documents</button>}>{data.documents.length ? <ul className="document-records">{data.documents.map(document => <li key={document.id}><span className="file-icon"><FileText size={22} /></span><div><strong>{titleCase(document.type)}</strong><p>{document.filename}</p><small>PDF document · Version {document.version}</small></div>{!locked && <button className="text-button" onClick={() => setTarget({ document })}>Replace PDF<UploadCloud size={14} /></button>}</li>)}</ul> : <Empty title="No documents recorded" description="Add your documents to this existing application." />}</Panel>
+      <Panel title="Application updates" description="Customer-visible notifications recorded by the service.">{notifications.error ? <ErrorBox message={notifications.error} retry={() => void notifications.refresh()} /> : notifications.loading ? <Loading /> : <NotificationList items={activities} compact />}</Panel>
+    </div><aside className="detail-aside"><Panel title="Application journey"><Timeline detail={data} /><div className="timeline-note"><strong>Updates reflect recorded status.</strong><p>Individual AI steps and automated action details are not reported by the customer API.</p></div></Panel><details className="details-note"><summary>About these updates</summary><p>AFI Resolve runs the document checks and permitted actions. This portal displays only your customer-visible records. It cannot identify whether live AI or the supported fallback processed a document. PDF download and earlier-version viewing are not available through the customer API.</p></details></aside></div>
+    {target && <CorrectionDialog detail={data} target={target} onClose={() => setTarget(null)} onSuccess={response => { setTarget(null); setNotice(response.submission.status === 'OPERATIONS' ? 'The service confirmed revalidation and Operations handover.' : response.corrections.length ? 'Your documents were received. Some requests still require attention; review the updated result.' : 'Your documents were received. Review the latest application status.'); void result.refresh(); void notifications.refresh(); }} />}
+  </div>;
+}

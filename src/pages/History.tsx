@@ -1,0 +1,13 @@
+import { ArrowUpDown, FilePlus2, RefreshCw, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useData } from '../data';
+import { Empty, ErrorBox, Loading, PageHeader, Panel, statusLabels } from '../components/ui';
+import { SubmissionTable } from '../components/Records';
+
+export function History() {
+  const { submissions } = useData(); const [query, setQuery] = useState(''); const [status, setStatus] = useState('all'); const [sort, setSort] = useState('newest');
+  const items = (submissions.data || []).filter(s => (status === 'all' || s.status === status) && s.caseReference.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => (sort === 'newest' ? -1 : 1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)));
+  return <div className="page-stack"><PageHeader eyebrow="YOUR APPLICATIONS" title="My submissions" description="Track your documents and pick up where you left off."><Link className="button primary" to="/submit"><FilePlus2 size={17} />New submission</Link></PageHeader><Panel><div className="table-toolbar"><label className="search-input"><Search size={17} /><input aria-label="Search submission reference" type="search" placeholder="Search by reference" value={query} onChange={e => setQuery(e.target.value)} /></label><select aria-label="Filter submissions by status" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{Object.entries(statusLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><label className="sort-control"><ArrowUpDown size={15} /><select aria-label="Sort submissions" value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label><button className="icon-button" aria-label="Refresh submissions" disabled={submissions.refreshing} onClick={() => void submissions.refresh()}><RefreshCw size={17} className={submissions.refreshing ? 'spin' : ''} /></button></div>{submissions.error && <ErrorBox message={submissions.error} retry={() => void submissions.refresh()} />}{submissions.loading ? <Loading /> : submissions.data && (items.length ? <SubmissionTable items={items} /> : <Empty title={query || status !== 'all' ? 'No matching submissions' : 'Your first application starts here'} description={query || status !== 'all' ? 'Try another reference or choose a different status.' : 'Submit your synthetic documents to start tracking your application.'}  />)}<div className="table-bottom">{submissions.data ? `${items.length} ${items.length === 1 ? 'submission' : 'submissions'}` : 'Submission history'}<span>Updates refresh every 15 seconds</span></div></Panel></div>;
+}

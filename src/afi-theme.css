@@ -1,0 +1,62 @@
+/* Light colour tokens extracted verbatim from AFI Resolve 2.0:
+   ../AFI_OCBC_IGNITE/frontend/src/design-system.css :root (lines 3-21).
+   Hover and input-border values come from the same file's button/input rules.
+   This file changes colours only; banking geometry and behaviour stay separate. */
+:root {
+  --canvas: #f7f8fa;
+  --surface: #fff;
+  --subtle: #f7f9fc;
+  --heading: #18283d;
+  --text: #334155;
+  --muted: #647084;
+  --border: #e1e6ed;
+  --blue: #3155bd;
+  --navy: #18283d;
+  --teal: #23765d;
+  --focus: var(--blue);
+  --success-bg: #edf7f1;
+  --success-text: #236647;
+  --warning-bg: #fff6e8;
+  --warning-text: #875c16;
+  --danger-bg: #fbefef;
+  --danger-text: #a13838;
+  --active-bg: #edf2ff;
+  --primary: var(--blue);
+  --secondary: var(--navy);
+  --accent: var(--teal);
+  --ink: var(--heading);
+  --line: var(--border);
+  --primary-hover: #28489f;
+  --input-border: #cbd4df;
+  color: var(--text);
+  background: var(--canvas);
+}
+
+/* Exact dashboard roles for branding, controls and semantic statuses. */
+.brand strong, .brand strong span { color: var(--heading); }
+.brand-mark { background: var(--blue); color: var(--surface); }
+.button.primary { color: var(--surface); background: var(--blue); border-color: var(--blue); }
+.button.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+.button.secondary { color: var(--text); background: var(--surface); border-color: var(--border); }
+.button.secondary:hover:not(:disabled) { background: var(--subtle); }
+input, select { color: var(--text); background: var(--surface); border-color: var(--input-border); }
+input:focus, select:focus { border-color: var(--blue); }
+.sidebar nav a.active { color: var(--blue); background: var(--active-bg); border-left-color: var(--blue); }
+.status-operations, .status-ready { color: var(--success-text); background: var(--success-bg); }
+.status-correction_required, .status-human_review, .status-draft { color: var(--warning-text); background: var(--warning-bg); }
+.status-pending_validation { color: var(--blue); background: var(--active-bg); }
+.status-failed, .status-escalated, .status-rejected { color: var(--danger-text); background: var(--danger-bg); }
+.nav-count, .count-label, .workspace-tabs span { color: var(--warning-text); background: var(--warning-bg); }
+.alert-error { color: var(--danger-text); background: var(--danger-bg); border-color: var(--border); }
+.alert-success, .complete-banner, .confirmation-symbol { color: var(--success-text); background: var(--success-bg); border-color: var(--border); }
+.complete-banner h2, .complete-banner p, .no-requests, .no-requests strong, .no-requests p { color: var(--success-text); }
+.timeline li.done .timeline-marker { color: var(--success-text); background: var(--success-bg); border-color: var(--border); }
+.timeline .done strong { color: var(--success-text); }
+.timeline li.active .timeline-marker { color: var(--warning-text); background: var(--warning-bg); border-color: var(--border); }
+.timeline .active strong { color: var(--warning-text); }
+.metric:nth-child(3) { border-top-color: var(--warning-text); }
+.metric:nth-child(4) { border-top-color: var(--teal); }
+.metric-symbol.navy { color: var(--navy); background: var(--subtle); }
+.metric-symbol.blue { color: var(--blue); background: var(--active-bg); }
+.metric-symbol.amber { color: var(--warning-text); background: var(--warning-bg); }
+.metric-symbol.teal { color: var(--teal); background: var(--success-bg); }
