@@ -7,9 +7,10 @@ const path = require('path');
 const assert = require('node:assert/strict');
 
 const root = path.resolve(__dirname, '..');
+const backend = path.resolve(process.env.AFI_BACKEND_ROOT || path.join(root, '../afi-resolve'));
 const portal = process.env.PORTAL_URL || 'http://localhost:5174';
 const apiBase = process.env.CUSTOMER_API_URL || 'http://localhost:5173/api/customer';
-const privatePath = process.env.AFI_PRIVATE_DEMO_STATE || path.resolve(root, '../AFI_OCBC_IGNITE/.local/customer-api-demo.json');
+const privatePath = process.env.AFI_PRIVATE_DEMO_STATE || path.join(backend, '.local/customer-api-demo.json');
 const state = JSON.parse(fs.readFileSync(privatePath, 'utf8'));
 const original = ['customer-information.pdf', 'account-application.pdf', 'tax-residency.pdf'].map(name => path.join(root, 'demo-documents', name));
 const corrected = path.join(root, 'demo-documents/tax-residency-corrected.pdf');
@@ -29,7 +30,6 @@ async function login(page) {
 }
 
 (async () => {
-  const backend = path.resolve(root, '../AFI_OCBC_IGNITE');
   const { execFileSync } = require('node:child_process');
   const sourceBefore = execFileSync('git', ['-C', backend, 'diff', '--binary']);
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -109,7 +109,7 @@ async function login(page) {
     await page.screenshot({ path: path.join(out, 'submission-confirmation.png'), fullPage: true });
     await page.getByRole('link', { name: 'Track this submission' }).click();
     await visible(page.getByRole('heading', { name: 'Your application', exact: true }));
-    await visible(page.locator('article.correction-card').filter({ hasText: 'declaration date' }));
+    await visible(page.locator('article.correction-card').filter({ hasText: /tax declaration/i }));
     await page.screenshot({ path: path.join(out, 'corrections-desktop.png'), fullPage: true });
 
     let staffPage;
@@ -121,14 +121,18 @@ async function login(page) {
       await staffPage.getByRole('button', { name: 'Sign in to workspace' }).click();
       await visible(staffPage.getByRole('heading', { name: 'Operations overview' }));
       await staffPage.getByRole('link', { name: 'Submissions', exact: true }).click();
-      await staffPage.getByLabel('Filter by submission source').selectOption('CUSTOMER_PORTAL');
+      await staffPage.getByLabel('Filter by source', { exact: true }).selectOption('CUSTOMER_PORTAL');
       await staffPage.locator('.table-toolbar input[type=search]').fill(id);
       const row = staffPage.locator('tr').filter({ has: staffPage.locator(`a[href^="/submissions/${id}"]`) });
       await visible(row); assert.match(await row.innerText(), /Customer Portal/);
       await staffPage.screenshot({ path: path.join(out, 'staff-received.png'), fullPage: true });
+      await row.locator('a.record-link').click();
+      await visible(staffPage.getByText('2 issues need attention', { exact: true }));
+      await staffPage.screenshot({ path: path.join(out, 'staff-open-detail.png'), fullPage: true });
+      await staffPage.locator('.document-toolbar select').first().selectOption(recorded.documents.find(d => d.type === 'TAX_RESIDENCY').id);
     }
 
-    await page.locator('article.correction-card').filter({ hasText: 'declaration date' }).getByRole('button', { name: 'Upload correction', exact: true }).click();
+    await page.locator('article.correction-card').filter({ hasText: /tax declaration/i }).getByRole('button', { name: 'Upload correction', exact: true }).click();
     await page.getByLabel('Choose corrected PDF', { exact: true }).setInputFiles(corrected);
     await visible(page.getByText('tax-residency-corrected.pdf', { exact: true }));
     const correction = page.waitForResponse(r => r.url().endsWith('/replacement') && r.request().method() === 'POST', { timeout: 600000 });
@@ -139,6 +143,11 @@ async function login(page) {
     await visible(page.locator('.no-requests strong'));
     await page.screenshot({ path: path.join(out, 'operations-desktop.png'), fullPage: true });
     if (staffPage) {
+      // Keep the detail open during the customer correction: no navigation or
+      // manual RM refresh may be needed for the newer version and routed state.
+      await visible(staffPage.getByText('Package received by Operations', { exact: true }));
+      await staffPage.getByLabel('Document version', { exact: true }).getByRole('option', { name: 'Version 2 (current)', exact: true }).waitFor({ state: 'attached' });
+      await staffPage.screenshot({ path: path.join(out, 'staff-synchronised-detail.png'), fullPage: true });
       await staffPage.getByRole('link', { name: 'Operations', exact: true }).click();
       await staffPage.locator('.table-toolbar input[type=search]').fill(id);
       const row = staffPage.locator('tr').filter({ has: staffPage.locator(`a[href^="/submissions/${id}"]`) });
@@ -183,6 +192,7 @@ async function login(page) {
     report = { passed: true, caseId: id, status: result.submission.status, outstandingRequests: result.corrections.length,
       sourceCaseVisible: checks.denied === 200, duplicateCases: checks.history.length - before.length - 1,
       staffDashboardVerified: !!staffPage, retryAfterLostResponseAndRefresh: true, tokenPersisted: checks.tokenPersisted,
+      openStaffDetailSynchronised: !!staffPage,
       browserErrors: errors.length, verifiedAt: new Date().toISOString() };
     fs.writeFileSync(path.join(out, 'verification.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('PASS real Chrome: login, multi-PDF intake, lost-response recovery after refresh, same-key retry, correction and Operations.');

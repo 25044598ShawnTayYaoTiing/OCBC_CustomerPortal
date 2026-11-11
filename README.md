@@ -1,5 +1,13 @@
 # AFI Banking Demo — Customer Portal
 
+## Shared backend integration — 11 November 2026
+
+The missing customer API is now implemented in the sibling `afi-resolve` Spring Boot application, using its existing PostgreSQL database and FastAPI pipeline. See `../afi-resolve/docs/customer-api-integration.md` for the implemented endpoints, V4 migration, security/replay design, current verification results and local startup instructions. The earlier dated results below are historical.
+
+Use `http://localhost:5174` for this portal and `http://localhost:5173` for the RM Dashboard, with `VITE_API_BASE_URL=http://localhost:5173/api/customer`. Customer accounts are reviewer-provisioned; synthetic demo credentials stay in the backend's ignored `.local/customer-api-demo.json`. Notifications are persisted portal records; no SMTP email is sent.
+
+The browser verifier defaults to the sibling `afi-resolve` directory. Set `AFI_BACKEND_ROOT` if your shared backend uses a different folder name. Its staff check also verifies that an already-open RM case updates after a customer correction without manual refresh.
+
 Independent React/TypeScript customer portal for the existing AFI Resolve 2.0
 backend. Original fictional branding, synthetic documents and real customer APIs.
 There is no new backend, database, AI service, bank balance or payment workflow.

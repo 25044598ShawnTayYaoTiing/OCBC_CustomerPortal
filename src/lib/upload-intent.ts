@@ -37,7 +37,7 @@ export function clearIntent(id: string) {
   try { sessionStorage.removeItem(storageKey(id)); } catch { /* Storage may be disabled. */ }
   changed();
 }
-export function clearUploadMemory() { filesInMemory.clear(); }
+export function clearUploadMemory() { filesInMemory.clear(); intentsInMemory.clear(); }
 export function intentFiles(intent: UploadIntent | null) { return intent ? filesInMemory.get(intent.key) || [] : []; }
 export function useIntent(id: string) {
   const [intent, setIntent] = useState(() => readIntent(id));

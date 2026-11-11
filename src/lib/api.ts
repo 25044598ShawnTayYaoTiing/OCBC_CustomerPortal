@@ -47,6 +47,7 @@ export async function api<T>(path: string, options: RequestInit & { timeout?: nu
   }
   const controller = new AbortController();
   const cancel = () => controller.abort();
+  if (signal?.aborted) controller.abort();
   signal?.addEventListener('abort', cancel, { once: true });
   const timer = window.setTimeout(() => controller.abort(), timeout);
   const mutation = init.method === 'POST' && init.body instanceof FormData;
