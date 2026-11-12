@@ -26,7 +26,7 @@ export class ApiError extends Error {
 
 function errorMessage(status: number, code: string, message: string) {
   if (status === 401) return code === 'INVALID_CREDENTIALS'
-    ? 'We could not sign you in. Check your customer credentials. After repeated attempts, wait 15 minutes before trying again.'
+    ? 'We could not sign you in. Check your customer credentials and try again.'
     : 'Your session has ended. Sign in again to continue.';
   if (status === 403) return 'This portal does not have access to that request. Check the configured portal origin or contact your demo administrator.';
   if (status === 404) return 'This submission or document is not available to your account.';
