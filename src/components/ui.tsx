@@ -8,7 +8,7 @@ export function Brand({ inverse = false }: { inverse?: boolean }) {
 }
 export const statusLabels: Record<string, string> = {
   DRAFT: 'Draft', PENDING_VALIDATION: 'Awaiting checks', CORRECTION_REQUIRED: 'Action required',
-  HUMAN_REVIEW: 'Under review', READY: 'Checks passed', OPERATIONS: 'With Operations',
+  HUMAN_REVIEW: 'Resolution Management', RESOLUTION_MANAGEMENT: 'Resolution Management', READY: 'Checks passed', OPERATIONS: 'With Operations',
 };
 export function Badge({ status }: { status: string }) { return <span className={`status status-${status.toLowerCase()}`}><i />{statusLabels[status] || status.replaceAll('_', ' ').toLowerCase()}</span>; }
 export function date(value: string | null, time = false) {

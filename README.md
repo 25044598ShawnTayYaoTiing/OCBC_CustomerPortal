@@ -1,3 +1,11 @@
+# Existing-customer service requests
+
+The current demo supports mailing-address changes, contact-detail updates and tax-residency updates. New eForms do not open accounts. See [scope, verification controls and live-test blockers](../afi-resolve/docs/service-request-scope-and-verification.md). Use the shared `scripts/demo/run_service_request_e2e.ps1 -Browser` harness for the real-stack check after Docker is available.
+
+# Digital eForms and Resolution Management (13 November 2026)
+
+Choose a prefilled digital declaration or the existing PDF workflow at `/submit`. New applications enter Resolution Management before Operations handover. Corrections update the same case; email delivery status is separate from the portal notice. See the shared [implementation and local setup guide](../afi-resolve/docs/enhancement-delivery-2026-11-13.md).
+
 # AFI Banking Demo — Customer Portal
 
 ## Shared backend integration — 11 November 2026

@@ -50,7 +50,7 @@ export async function api<T>(path: string, options: RequestInit & { timeout?: nu
   if (signal?.aborted) controller.abort();
   signal?.addEventListener('abort', cancel, { once: true });
   const timer = window.setTimeout(() => controller.abort(), timeout);
-  const mutation = init.method === 'POST' && init.body instanceof FormData;
+  const mutation = init.method === 'POST' && !anonymous;
   try {
     const headers = new Headers(init.headers);
     if (!anonymous && session) headers.set('Authorization', `Bearer ${session.accessToken}`);
