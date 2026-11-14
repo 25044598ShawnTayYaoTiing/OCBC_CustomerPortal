@@ -11,7 +11,7 @@ export interface Document { id: string; type: string; version: number; filename:
 export interface Correction {
   id: string; status: string; documentType: string; documentIds: string[]; ruleKey?: string; instruction: string;
 }
-export interface Detail { submission: Submission; documents: Document[]; corrections: Correction[]; contactVerification?: { emailVerified: boolean; phoneVerified: boolean } | null }
+export interface Detail { submission: Submission; documents: Document[]; corrections: Correction[]; requirements?: {name:string;passed:boolean}[]; processing?: {received:boolean;validated:boolean;revalidation:boolean;reviewRequired:boolean}; contactVerification?: { emailVerified: boolean; phoneVerified: boolean } | null }
 export interface Notification {
   id: string; submissionId: string; type: string; message: string;
   channel: string; deliveryStatus: string; emailDeliveryStatus?: string | null; createdAt: string;
@@ -25,5 +25,5 @@ export interface BankingProfile {
 export interface DigitalValues {
   requestType: string; accountType: string; currency: string; mailingAddress: string; email: string;
   mobile: string; occupation: string; taxResidency: string; foreignTaxCountry: string; taxIdentifier: string;
-  declarationDate: string; taxDeclaration: boolean; authorisation: boolean; expectedRevision?: number;
+  declarationDate: string; taxDeclaration: boolean; authorisation: boolean; expectedRevision?: number; sourceOfFunds?: string;
 }

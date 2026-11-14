@@ -1,17 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { useAuth } from '../auth';
-import { useData } from '../data';
-import { useIntent } from '../lib/upload-intent';
-import { api } from '../lib/api';
-import { serviceLabel, serviceRequests } from '../lib/service-requests';
-import type { Detail, DigitalValues } from '../types';
-import { ErrorBox, Loading, Notice, PageHeader, Panel } from '../components/ui';
-import { LegacyDigitalForm } from './LegacyDigitalForm';
+import { useEffect, useRef, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { useAuth } from "../auth";
+import { useData } from "../data";
+import { useIntent } from "../lib/upload-intent";
+import { api } from "../lib/api";
+import { serviceLabel, serviceRequests } from "../lib/service-requests";
+import type { Detail, DigitalValues } from "../types";
+import { ErrorBox, Loading, Notice, PageHeader, Panel } from "../components/ui";
+import { LegacyDigitalForm } from "./LegacyDigitalForm";
 
 const today = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
 export function DigitalForm() {
   const { id } = useParams();
@@ -24,18 +34,23 @@ export function DigitalForm() {
   const pending = useIntent(profile!.id);
 
   const [values, setValues] = useState<DigitalValues>(() => ({
-    requestType: ['ADDRESS_CHANGE', 'CONTACT_UPDATE', 'TAX_RESIDENCY_UPDATE'].includes(query.get('requestType') || '')
-      ? query.get('requestType')!
-      : 'ADDRESS_CHANGE',
-    accountType: '',
-    currency: '',
-    mailingAddress: p?.mailingAddress || '',
-    email: p?.email || '',
-    mobile: p?.mobile || '',
-    occupation: '',
-    taxResidency: p?.taxResidency || 'Singapore',
-    foreignTaxCountry: '',
-    taxIdentifier: '',
+    requestType: serviceRequests
+      .map((request) => request.value)
+      .includes(query.get("requestType") || "")
+      ? query.get("requestType")!
+      : "ADDRESS_CHANGE",
+    accountType: p?.accountType || "SAVINGS",
+    currency: p?.currency || "SGD",
+    mailingAddress:
+      query.get("requestType") === "RESIDENTIAL_ADDRESS_CHANGE"
+        ? p?.residentialAddress || ""
+        : p?.mailingAddress || "",
+    email: p?.email || "",
+    mobile: p?.mobile || "",
+    occupation: "",
+    taxResidency: p?.taxResidency || "Singapore",
+    foreignTaxCountry: "",
+    taxIdentifier: "",
     declarationDate: today(),
     taxDeclaration: false,
     authorisation: false,
@@ -45,7 +60,7 @@ export function DigitalForm() {
   const [loading, setLoading] = useState(!!id);
   const [loaded, setLoaded] = useState(!id);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
   const [retry, setRetry] = useState(false);
   const intent = useRef<{ key: string; body: string } | null>(null);
@@ -54,18 +69,30 @@ export function DigitalForm() {
     if (!id) return;
     const controller = new AbortController();
     void Promise.all([
-      api<{ values: DigitalValues }>(`/submissions/${encodeURIComponent(id)}/eform`, { signal: controller.signal }),
-      api<Detail>(`/submissions/${encodeURIComponent(id)}`, { signal: controller.signal }),
+      api<{ values: DigitalValues }>(
+        `/submissions/${encodeURIComponent(id)}/eform`,
+        { signal: controller.signal },
+      ),
+      api<Detail>(`/submissions/${encodeURIComponent(id)}`, {
+        signal: controller.signal,
+      }),
     ])
       .then(([form, detail]) => {
         if (!controller.signal.aborted) {
-          setValues({ ...form.values, authorisation: false, expectedRevision: detail.submission.revision });
-          setLocked(detail.submission.status === 'OPERATIONS');
+          setValues({
+            ...form.values,
+            authorisation: false,
+            expectedRevision: detail.submission.revision,
+          });
+          setLocked(detail.submission.status === "OPERATIONS");
           setLoaded(true);
         }
       })
-      .catch(e => {
-        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Unable to load this request.');
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setError(
+            e instanceof Error ? e.message : "Unable to load this request.",
+          );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -73,24 +100,29 @@ export function DigitalForm() {
     return () => controller.abort();
   }, [id]);
 
-  const update = <K extends keyof DigitalValues>(key: K, value: DigitalValues[K]) =>
-    setValues(v => ({ ...v, [key]: value }));
+  const update = <K extends keyof DigitalValues>(
+    key: K,
+    value: DigitalValues[K],
+  ) => setValues((v) => ({ ...v, [key]: value }));
 
-  const address = values.requestType === 'ADDRESS_CHANGE';
-  const contact = values.requestType === 'CONTACT_UPDATE';
-  const tax = values.requestType === 'TAX_RESIDENCY_UPDATE';
-  const foreign = tax && values.taxResidency !== 'Singapore';
+  const address = ["ADDRESS_CHANGE", "RESIDENTIAL_ADDRESS_CHANGE"].includes(
+    values.requestType,
+  );
+  const additionalAccount = values.requestType === "ADDITIONAL_ACCOUNT";
+  const contact = values.requestType === "CONTACT_UPDATE";
+  const tax = values.requestType === "TAX_RESIDENCY_UPDATE";
+  const foreign = tax && values.taxResidency !== "Singapore";
 
   async function submit() {
     setBusy(true);
-    setError('');
+    setError("");
     if (!intent.current) {
       intent.current = {
         key: crypto.randomUUID(),
         body: JSON.stringify({
           ...values,
-          accountType: null,
-          currency: null,
+          accountType: additionalAccount ? values.accountType : null,
+          currency: additionalAccount ? values.currency : null,
           occupation: null,
           mailingAddress: address ? values.mailingAddress : null,
           email: contact ? values.email : null,
@@ -103,32 +135,55 @@ export function DigitalForm() {
       };
     }
     try {
-      const result = await api<Detail>(id ? `/submissions/${encodeURIComponent(id)}/eform` : '/eforms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': intent.current.key },
-        body: intent.current.body,
-        timeout: 600000,
-      });
+      const result = await api<Detail>(
+        id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": intent.current.key,
+          },
+          body: intent.current.body,
+          timeout: 600000,
+        },
+      );
       intent.current = null;
       void submissions.refresh();
       void notifications.refresh();
       navigate(`/submissions/${result.submission.id}`);
     } catch (e) {
-      const uncertain = !(e && typeof e === 'object' && 'status' in e && typeof e.status === 'number' && e.status >= 400 && e.status < 500);
+      const uncertain = !(
+        e &&
+        typeof e === "object" &&
+        "status" in e &&
+        typeof e.status === "number" &&
+        e.status >= 400 &&
+        e.status < 500
+      );
       if (!uncertain) intent.current = null;
       setRetry(uncertain);
-      setError(e instanceof Error ? e.message : 'Unable to confirm this request.');
+      setError(
+        e instanceof Error ? e.message : "Unable to confirm this request.",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   if (loading) return <Loading text="Loading your service request..." />;
-  if (!loaded || !p) return <ErrorBox message={error || 'Your existing synthetic profile is unavailable.'} />;
-  if (id && values.requestType === 'ACCOUNT_OPENING') {
+  if (!loaded || !p)
+    return (
+      <ErrorBox
+        message={error || "Your existing synthetic profile is unavailable."}
+      />
+    );
+  if (id && values.requestType === "ACCOUNT_OPENING") {
     return (
       <>
-        <Notice>This is a historical account-opening case. New requests use the existing-customer service workflow.</Notice>
+        <Notice>
+          This is a historical account-opening case. New requests use the
+          existing-customer service workflow.
+        </Notice>
         <LegacyDigitalForm />
       </>
     );
@@ -136,7 +191,10 @@ export function DigitalForm() {
   if (pending) {
     return (
       <Notice>
-        Confirm your pending PDF upload first. <Link className="text-link" to={pending.returnTo}>Resume upload</Link>
+        Confirm your pending PDF upload first.{" "}
+        <Link className="text-link" to={pending.returnTo}>
+          Resume upload
+        </Link>
       </Notice>
     );
   }
@@ -144,26 +202,30 @@ export function DigitalForm() {
   return (
     <div className="page-stack">
       <div>
-        <Link className="text-link" to={id ? `/submissions/${id}` : '/submit'}>
+        <Link className="text-link" to={id ? `/submissions/${id}` : "/submit"}>
           <ArrowLeft size={15} /> Back
         </Link>
       </div>
       <PageHeader
         eyebrow="Guided Digital Request"
-        title={id ? 'Correct your service request' : 'Submit a banking service request'}
+        title={
+          id
+            ? "Correct your service request"
+            : "Submit a banking service request"
+        }
         description="Prefilled from your synthetic customer profile. Only fields relevant to your selected service are requested."
       />
 
       <ol className="form-progress" aria-label="Request progress">
-        <li aria-current={stage === 0 ? 'step' : undefined}>
-          <span>{stage > 0 || review ? <Check size={14} /> : '01'}</span>
+        <li aria-current={stage === 0 ? "step" : undefined}>
+          <span>{stage > 0 || review ? <Check size={14} /> : "01"}</span>
           <strong>Choose service</strong>
         </li>
-        <li aria-current={!review && stage === 1 ? 'step' : undefined}>
-          <span>{review ? <Check size={14} /> : '02'}</span>
+        <li aria-current={!review && stage === 1 ? "step" : undefined}>
+          <span>{review ? <Check size={14} /> : "02"}</span>
           <strong>Your changes</strong>
         </li>
-        <li aria-current={review ? 'step' : undefined}>
+        <li aria-current={review ? "step" : undefined}>
           <span>03</span>
           <strong>Review &amp; send</strong>
         </li>
@@ -171,16 +233,25 @@ export function DigitalForm() {
 
       <form
         className="eform-layout"
-        onSubmit={e => {
+        onSubmit={(e) => {
           e.preventDefault();
-          if (stage === 0 && !retry) { setStage(1); return; }
-          if (!review && !retry) { setReview(true); return; }
+          if (stage === 0 && !retry) {
+            setStage(1);
+            return;
+          }
+          if (!review && !retry) {
+            setReview(true);
+            return;
+          }
           void submit();
         }}
       >
         <div className="page-stack" style={{ gap: 20 }}>
           <div hidden={stage !== 0 || review}>
-            <Panel title="Select banking service" description="Your existing profile details are already on hand.">
+            <Panel
+              title="Select banking service"
+              description="Your existing profile details are already on hand."
+            >
               <div className="eform-fields">
                 <label className="full-width">
                   Request type
@@ -188,10 +259,12 @@ export function DigitalForm() {
                     aria-label="Request type"
                     value={values.requestType}
                     disabled={!!id}
-                    onChange={e => update('requestType', e.target.value)}
+                    onChange={(e) => update("requestType", e.target.value)}
                   >
-                    {serviceRequests.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                    {serviceRequests.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -199,56 +272,133 @@ export function DigitalForm() {
             </Panel>
           </div>
 
-          <fieldset hidden={review || stage === 0} disabled={busy || locked || retry || review || stage === 0} className="eform-fieldset">
+          <fieldset
+            hidden={review || stage === 0}
+            disabled={busy || locked || retry || review || stage === 0}
+            className="eform-fieldset"
+          >
             {address && (
-              <Panel title="New mailing address" description="Your existing account and identity stay the same.">
+              <Panel
+                title={
+                  values.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
+                    ? "New residential address"
+                    : "New mailing address"
+                }
+                description="Your existing account and identity stay the same."
+              >
                 <div className="eform-fields">
                   <label className="full-width">
-                    Requested mailing address
+                    {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
+                      ? "Requested residential address"
+                      : "Requested mailing address"}
                     <input
                       required
                       maxLength={500}
                       autoComplete="street-address"
                       value={values.mailingAddress}
-                      onChange={e => update('mailingAddress', e.target.value)}
+                      onChange={(e) => update("mailingAddress", e.target.value)}
                     />
                   </label>
                 </div>
               </Panel>
             )}
 
+            {additionalAccount && (
+              <Panel
+                title="Additional account preferences"
+                description="Project demo policy requires a source-of-funds description for current-account requests."
+              >
+                <div className="eform-fields">
+                  <label>
+                    Account type
+                    <select
+                      value={values.accountType}
+                      onChange={(e) => update("accountType", e.target.value)}
+                    >
+                      <option value="SAVINGS">Savings</option>
+                      <option value="CURRENT">Current</option>
+                    </select>
+                  </label>
+                  <label>
+                    Currency
+                    <select
+                      value={values.currency}
+                      onChange={(e) => update("currency", e.target.value)}
+                    >
+                      <option value="SGD">SGD</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </label>
+                  {values.accountType === "CURRENT" && (
+                    <label className="full-width">
+                      Source of funds
+                      <input
+                        required
+                        maxLength={500}
+                        value={values.sourceOfFunds || ""}
+                        onChange={(e) =>
+                          update("sourceOfFunds", e.target.value)
+                        }
+                      />
+                    </label>
+                  )}
+                </div>
+              </Panel>
+            )}
             {contact && (
-              <Panel title="Contact-detail update" description="Change your email, phone number, or both. No tax or address declaration is required.">
+              <Panel
+                title="Contact-detail update"
+                description="Change your email, phone number, or both. No tax or address declaration is required."
+              >
                 <div className="eform-fields">
                   <label>
                     New email
-                    <input type="email" maxLength={254} value={values.email} onChange={e => update('email', e.target.value)} />
+                    <input
+                      type="email"
+                      maxLength={254}
+                      value={values.email}
+                      onChange={(e) => update("email", e.target.value)}
+                    />
                   </label>
                   <label>
                     New phone number
-                    <input type="tel" maxLength={40} value={values.mobile} onChange={e => update('mobile', e.target.value)} />
+                    <input
+                      type="tel"
+                      maxLength={40}
+                      value={values.mobile}
+                      onChange={(e) => update("mobile", e.target.value)}
+                    />
                   </label>
                 </div>
                 <div className="form-body" style={{ paddingTop: 0 }}>
                   <Notice>
-                    After submission, verify an email OTP. A changed email is verified at the new address; a phone-only change uses your registered email to authorise the request. New phone ownership still requires independent Resolution Management verification.
+                    After submission, verify an email OTP. A changed email is
+                    verified at the new address; a phone-only change uses your
+                    registered email to authorise the request. New phone
+                    ownership still requires independent Resolution Management
+                    verification.
                   </Notice>
                 </div>
               </Panel>
             )}
 
             {tax && (
-              <Panel title="Tax-residency declaration" description="Declare your synthetic tax jurisdictions.">
+              <Panel
+                title="Tax-residency declaration"
+                description="Declare your synthetic tax jurisdictions."
+              >
                 <div className="eform-fields">
-                  <label className={foreign ? '' : 'full-width'}>
+                  <label className={foreign ? "" : "full-width"}>
                     Tax residency
                     <select
                       aria-label="Tax residency"
                       value={values.taxResidency}
-                      onChange={e => update('taxResidency', e.target.value)}
+                      onChange={(e) => update("taxResidency", e.target.value)}
                     >
                       <option value="Singapore">Singapore only</option>
-                      <option value="Foreign">Outside Singapore / multiple jurisdictions</option>
+                      <option value="Foreign">
+                        Outside Singapore / multiple jurisdictions
+                      </option>
                     </select>
                   </label>
                   {foreign && (
@@ -259,7 +409,9 @@ export function DigitalForm() {
                           required
                           maxLength={500}
                           value={values.foreignTaxCountry}
-                          onChange={e => update('foreignTaxCountry', e.target.value)}
+                          onChange={(e) =>
+                            update("foreignTaxCountry", e.target.value)
+                          }
                         />
                       </label>
                       <label className="full-width">
@@ -268,7 +420,9 @@ export function DigitalForm() {
                           required
                           maxLength={500}
                           value={values.taxIdentifier}
-                          onChange={e => update('taxIdentifier', e.target.value)}
+                          onChange={(e) =>
+                            update("taxIdentifier", e.target.value)
+                          }
                         />
                       </label>
                     </>
@@ -278,9 +432,14 @@ export function DigitalForm() {
                       type="checkbox"
                       required
                       checked={values.taxDeclaration}
-                      onChange={e => update('taxDeclaration', e.target.checked)}
+                      onChange={(e) =>
+                        update("taxDeclaration", e.target.checked)
+                      }
                     />
-                    <span>I declare that my synthetic tax jurisdictions and TIN details are complete and accurate.</span>
+                    <span>
+                      I declare that my synthetic tax jurisdictions and TIN
+                      details are complete and accurate.
+                    </span>
                   </label>
                 </div>
               </Panel>
@@ -295,7 +454,7 @@ export function DigitalForm() {
                     required
                     max={today()}
                     value={values.declarationDate}
-                    onChange={e => update('declarationDate', e.target.value)}
+                    onChange={(e) => update("declarationDate", e.target.value)}
                   />
                 </label>
                 <label className="checkbox-label full-width">
@@ -303,10 +462,14 @@ export function DigitalForm() {
                     type="checkbox"
                     required
                     checked={values.authorisation}
-                    onChange={e => update('authorisation', e.target.checked)}
+                    onChange={(e) => update("authorisation", e.target.checked)}
                   />
                   <span>
-                    I authorise this {serviceLabel(values.requestType).toLowerCase()} using synthetic demonstration information and the evidence provided. This records an authenticated declaration, not a handwritten signature.
+                    I authorise this{" "}
+                    {serviceLabel(values.requestType).toLowerCase()} using
+                    synthetic demonstration information and the evidence
+                    provided. This records an authenticated declaration, not a
+                    handwritten signature.
                   </span>
                 </label>
               </div>
@@ -314,33 +477,93 @@ export function DigitalForm() {
           </fieldset>
 
           {review && (
-            <Panel title="Review your service request" description="Check the details below before sending.">
+            <Panel
+              title="Review your service request"
+              description="Check the details below before sending."
+            >
               <dl className="review-summary">
-                <div><dt>Service</dt><dd>{serviceLabel(values.requestType)}</dd></div>
-                <div><dt>Customer reference</dt><dd className="mono">{profile!.customerReference}</dd></div>
-                {address && <div><dt>New mailing address</dt><dd>{values.mailingAddress}</dd></div>}
+                <div>
+                  <dt>Service</dt>
+                  <dd>{serviceLabel(values.requestType)}</dd>
+                </div>
+                <div>
+                  <dt>Customer reference</dt>
+                  <dd className="mono">{profile!.customerReference}</dd>
+                </div>
+                {address && (
+                  <div>
+                    <dt>New mailing address</dt>
+                    <dd>{values.mailingAddress}</dd>
+                  </div>
+                )}
                 {contact && (
                   <>
-                    <div><dt>Email</dt><dd>{values.email || 'Unchanged'}</dd></div>
-                    <div><dt>Phone</dt><dd>{values.mobile || 'Unchanged'}</dd></div>
+                    <div>
+                      <dt>Email</dt>
+                      <dd>{values.email || "Unchanged"}</dd>
+                    </div>
+                    <div>
+                      <dt>Phone</dt>
+                      <dd>{values.mobile || "Unchanged"}</dd>
+                    </div>
                   </>
                 )}
                 {tax && (
                   <>
-                    <div><dt>Tax residency</dt><dd>{values.taxResidency}</dd></div>
+                    <div>
+                      <dt>Tax residency</dt>
+                      <dd>{values.taxResidency}</dd>
+                    </div>
                     {foreign && (
                       <>
-                        <div><dt>Jurisdictions</dt><dd>{values.foreignTaxCountry}</dd></div>
-                        <div><dt>Tax identifiers</dt><dd>{values.taxIdentifier}</dd></div>
+                        <div>
+                          <dt>Jurisdictions</dt>
+                          <dd>{values.foreignTaxCountry}</dd>
+                        </div>
+                        <div>
+                          <dt>Tax identifiers</dt>
+                          <dd>{values.taxIdentifier}</dd>
+                        </div>
                       </>
                     )}
                   </>
                 )}
-                <div><dt>Declaration date</dt><dd>{values.declarationDate}</dd></div>
-                <div><dt>Authorisation</dt><dd>{values.authorisation ? 'Confirmed' : 'Not confirmed'}</dd></div>
+                {additionalAccount && (
+                  <>
+                    <div>
+                      <dt>Account type</dt>
+                      <dd>{values.accountType}</dd>
+                    </div>
+                    <div>
+                      <dt>Currency</dt>
+                      <dd>{values.currency}</dd>
+                    </div>
+                    {values.accountType === "CURRENT" && (
+                      <div>
+                        <dt>Source of funds</dt>
+                        <dd>{values.sourceOfFunds}</dd>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div>
+                  <dt>Declaration date</dt>
+                  <dd>{values.declarationDate}</dd>
+                </div>
+                <div>
+                  <dt>Authorisation</dt>
+                  <dd>
+                    {values.authorisation ? "Confirmed" : "Not confirmed"}
+                  </dd>
+                </div>
               </dl>
               <div className="form-actions">
-                <button type="button" className="button secondary" disabled={busy || retry} onClick={() => setReview(false)}>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || retry}
+                  onClick={() => setReview(false)}
+                >
                   Edit details
                 </button>
               </div>
@@ -350,32 +573,50 @@ export function DigitalForm() {
           {error && <ErrorBox message={error} />}
           {retry && (
             <Notice>
-              The outcome is unconfirmed. Retry the same request in this tab or check My submissions before creating another request.
+              The outcome is unconfirmed. Retry the same request in this tab or
+              check My submissions before creating another request.
             </Notice>
           )}
 
-          <div className="panel" style={{ overflow: 'visible' }}>
-            <div className="form-actions" style={{ borderTop: 0, borderRadius: 'var(--radius-lg)' }}>
+          <div className="panel" style={{ overflow: "visible" }}>
+            <div
+              className="form-actions"
+              style={{ borderTop: 0, borderRadius: "var(--radius-lg)" }}
+            >
               <div className="step-back-actions">
                 {stage === 1 && !review && (
-                  <button type="button" className="button secondary" disabled={busy || retry || !!id} onClick={() => setStage(0)}>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || retry || !!id}
+                    onClick={() => setStage(0)}
+                  >
                     Change service
                   </button>
                 )}
-                <Link className="text-link" to="/submissions">My submissions</Link>
+                <Link className="text-link" to="/submissions">
+                  My submissions
+                </Link>
               </div>
-              <button className="button primary" disabled={busy || locked || (!retry && stage !== 0 && !values.authorisation)}>
+              <button
+                className="button primary"
+                disabled={
+                  busy ||
+                  locked ||
+                  (!retry && stage !== 0 && !values.authorisation)
+                }
+              >
                 {busy
-                  ? 'Checking request...'
+                  ? "Checking request..."
                   : retry
-                    ? 'Retry original request'
+                    ? "Retry original request"
                     : stage === 0
-                      ? 'Continue to your changes'
+                      ? "Continue to your changes"
                       : !review
-                        ? 'Review request'
+                        ? "Review request"
                         : id
-                          ? 'Submit correction'
-                          : 'Submit service request'}
+                          ? "Submit correction"
+                          : "Submit service request"}
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -386,25 +627,59 @@ export function DigitalForm() {
           <div className="aside-card">
             <h3 style={{ fontSize: 15 }}>Existing customer profile</h3>
             <dl className="data-list">
-              <div><dt>Customer</dt><dd>{profile!.name}</dd></div>
-              <div><dt>Customer reference</dt><dd className="mono">{profile!.customerReference}</dd></div>
-              <div><dt>Synthetic identity</dt><dd className="mono">{p.identityNumber}</dd></div>
-              <div><dt>Current mailing address</dt><dd>{p.mailingAddress}</dd></div>
-              <div><dt>Registered contact</dt><dd>{p.email}<br />{p.mobile}</dd></div>
+              <div>
+                <dt>Customer</dt>
+                <dd>{profile!.name}</dd>
+              </div>
+              <div>
+                <dt>Customer reference</dt>
+                <dd className="mono">{profile!.customerReference}</dd>
+              </div>
+              <div>
+                <dt>Synthetic identity</dt>
+                <dd className="mono">{p.identityNumber}</dd>
+              </div>
+              <div>
+                <dt>Current mailing address</dt>
+                <dd>{p.mailingAddress}</dd>
+              </div>
+              <div>
+                <dt>Registered contact</dt>
+                <dd>
+                  {p.email}
+                  <br />
+                  {p.mobile}
+                </dd>
+              </div>
             </dl>
           </div>
           <div className="aside-card">
             <h3 style={{ fontSize: 14 }}>{serviceLabel(values.requestType)}</h3>
             {address ? (
-              <Notice>A supporting PDF must contain your customer reference and corroborate the requested new mailing address.</Notice>
+              <Notice>
+                A supporting PDF must contain your customer reference and
+                corroborate the requested new mailing address.
+              </Notice>
             ) : foreign ? (
-              <Notice>A supporting PDF must corroborate the declared foreign tax jurisdiction and TIN and identify your customer reference.</Notice>
+              <Notice>
+                A supporting PDF must corroborate the declared foreign tax
+                jurisdiction and TIN and identify your customer reference.
+              </Notice>
             ) : contact ? (
-              <p className="muted">Contact updates follow deterministic verification checks. An unavailable OTP channel keeps the request unverified.</p>
+              <p className="muted">
+                Contact updates follow deterministic verification checks. An
+                unavailable OTP channel keeps the request unverified.
+              </p>
             ) : (
-              <p className="muted">No extra supporting PDF is required for a Singapore-only declaration.</p>
+              <p className="muted">
+                No extra supporting PDF is required for a Singapore-only
+                declaration.
+              </p>
             )}
-            <p className="muted">Resolution Management approves the validated request for Operations.</p>
+            <p className="muted">
+              Resolution Management approves the validated request for
+              Operations.
+            </p>
           </div>
         </aside>
       </form>
