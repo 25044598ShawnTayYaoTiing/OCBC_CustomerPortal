@@ -1,4 +1,4 @@
-import { ArrowRight, Check, FileCheck2, Files, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -7,28 +7,128 @@ import { Brand, ErrorBox } from '../components/ui';
 
 export function Login() {
   const { login, profile, reason } = useAuth();
-  const location = useLocation(); const navigate = useNavigate();
-  const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
-  const destination = typeof location.state?.from === 'string' && location.state.from.startsWith('/') && !location.state.from.startsWith('//') ? location.state.from : '/';
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const destination =
+    typeof location.state?.from === 'string' &&
+    location.state.from.startsWith('/') &&
+    !location.state.from.startsWith('//')
+      ? location.state.from
+      : '/';
+
   if (profile) return <Navigate to={destination} replace />;
-  return <main className="login-page business-login">
-    <header className="login-header"><Brand /><div className="login-header-description">Banking service requests<span>Customer access</span></div><span className="login-demo-label"><ShieldCheck size={15} />Demonstration only</span></header>
-    <div className="login-disclaimer"><ShieldCheck size={16} /><span>Fictional banking portal. Synthetic customer accounts only. Not affiliated with OCBC.</span></div>
-    <div className="login-body">
-      <section className="login-story"><div className="login-story-content"><p className="eyebrow">AFI BANKING DEMO &middot; BUSINESS DOCUMENTS</p><h1>Life changes.<br />Banking moves<br />with you.</h1><p>Your details, your documents, your next step. A simpler way to manage existing-customer service requests.</p>
-        <div className="banking-illustration" aria-hidden="true"><div className="illustration-rule" /><div className="illustration-document"><span className="illustration-heading"><Files size={21} /><i /></span><div /><div /><div /><span className="illustration-stamp"><Check size={23} /></span></div><div className="illustration-caption"><span>DOCUMENT SERVICES</span><strong>Submit. Track. Respond.</strong><small>One connected application journey.</small></div></div>
-        <div className="story-steps">{[[FileCheck2, 'Submit your documents', 'Update your details using synthetic records.'], [Files, 'Track your application', 'See the status recorded by the service.'], [Check, 'Respond to requests', 'Return corrected PDFs to the same case.']].map(([Icon, title, description], i) => { const Symbol = Icon as typeof Check; return <div key={String(title)}><span className="story-step-number">0{i + 1}</span><Symbol size={19} /><div><strong>{String(title)}</strong><small>{String(description)}</small></div></div>; })}</div>
-      </div></section>
-      <section className="login-entry"><div className="login-form"><div className="login-card-heading"><LockKeyhole size={21} /><div><p className="eyebrow">CUSTOMER ACCESS</p><h2>Sign in to your portal</h2></div></div><p>Use your provisioned synthetic customer account.</p>
-        {reason && <p className="session-message" role="status">{reason}</p>}{configurationError && <ErrorBox message={configurationError} />}
-        <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { await login(username.trim(), password); setPassword(''); navigate(destination, { replace: true }); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to sign in.'); } finally { setBusy(false); } }}>
-          <label>Customer username<input autoComplete="username" name="username" required maxLength={80} placeholder="Enter your username" value={username} onChange={e => setUsername(e.target.value)} /></label>
-          <label>Password<input autoComplete="current-password" name="password" type="password" required maxLength={128} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} /></label>
-          {error && <ErrorBox message={error} />}<button className="button primary full" disabled={busy || !!configurationError}>{busy ? 'Signing you in...' : 'Sign in'}<ArrowRight size={17} /></button>
-        </form>
-        <div className="login-help"><ShieldCheck size={18} /><p>Need access to the demonstration?<br /><span>Contact your demo administrator for a customer account.</span></p></div><p className="login-session-note">Your session stays in memory. Refreshing this page requires you to sign in again.</p>
-      </div><div className="login-access-note"><LockKeyhole size={15} /><p>Never enter real banking credentials or upload real customer documents in this demonstration.</p></div></section>
-    </div><footer className="login-bottomline"><span>&copy; AFI Banking Demo &middot; Independent hackathon project</span><span>Fictional branding. Synthetic documents. Real submission workflow.</span></footer>
-  </main>;
+
+  return (
+    <main className="auth-page">
+      <section className="auth-showcase">
+        <Brand inverse />
+        <div className="auth-showcase-body">
+          <span className="auth-badge">
+            <ShieldCheck size={14} /> Synthetic Banking Demo
+          </span>
+          <h1>Service requests, without the back-and-forth.</h1>
+          <p>
+            Update your mailing address, contact details, or tax residency from your existing profile—with real-time document checks and clear status tracking.
+          </p>
+          <div className="auth-preview-card" aria-hidden="true">
+            <div className="auth-preview-step">
+              <span>01</span>
+              <div>
+                <strong>Guided eForm or PDF upload</strong>
+                <small>Prefilled from your synthetic customer profile</small>
+              </div>
+            </div>
+            <div className="auth-preview-step">
+              <span>02</span>
+              <div>
+                <strong>Automated evidence validation</strong>
+                <small>Instant checks catch missing fields before handover</small>
+              </div>
+            </div>
+            <div className="auth-preview-step">
+              <span>03</span>
+              <div>
+                <strong>Direct resolution &amp; tracking</strong>
+                <small>Respond to any correction request in one workspace</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="auth-showcase-foot">
+          <span>AFI Resolve 2.0 · Customer Portal</span>
+          <span>Synthetic records only · Not affiliated with OCBC</span>
+        </div>
+      </section>
+
+      <section className="auth-entry">
+        <div className="auth-card">
+          <div className="auth-card-head">
+            <p className="eyebrow">Customer Access</p>
+            <h2>Sign in to your portal</h2>
+            <p>Enter your provisioned synthetic customer credentials.</p>
+          </div>
+          {reason && <p className="alert alert-info" role="status" style={{ marginBottom: 16 }}>{reason}</p>}
+          {configurationError && <div style={{ marginBottom: 16 }}><ErrorBox message={configurationError} /></div>}
+          <form
+            className="auth-form"
+            onSubmit={async e => {
+              e.preventDefault();
+              setBusy(true);
+              setError('');
+              try {
+                await login(username.trim(), password);
+                setPassword('');
+                navigate(destination, { replace: true });
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Unable to sign in.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <label>
+              Customer username
+              <input
+                autoComplete="username"
+                name="username"
+                required
+                maxLength={80}
+                placeholder="e.g. alex.tan"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </label>
+            <label>
+              Password
+              <input
+                autoComplete="current-password"
+                name="password"
+                type="password"
+                required
+                maxLength={128}
+                placeholder="Enter your password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </label>
+            {error && <ErrorBox message={error} />}
+            <button className="button primary full" disabled={busy || !!configurationError}>
+              {busy ? 'Signing in…' : 'Sign in'}
+              <ArrowRight size={16} />
+            </button>
+          </form>
+          <div className="auth-note">
+            <LockKeyhole size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              Your session is held in memory only. Never enter real banking credentials or upload real customer documents.
+            </span>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
