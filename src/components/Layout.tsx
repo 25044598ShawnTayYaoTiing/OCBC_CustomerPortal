@@ -8,11 +8,11 @@ import { Brand, Notice } from './ui';
 
 const nav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
-  { to: '/submit', label: 'Submit documents', icon: FilePlus2 },
-  { to: '/submissions', label: 'My submissions', icon: Files },
-  { to: '/corrections', label: 'Corrections required', icon: ClipboardPenLine },
+  { to: '/submit', label: 'Services', icon: FilePlus2 },
+  { to: '/submissions', label: 'My requests', icon: Files },
+  { to: '/corrections', label: 'Action inbox', icon: ClipboardPenLine },
   { to: '/notifications', label: 'Notifications', icon: Bell },
-  { to: '/profile', label: 'Account & profile', icon: UserRound },
+  { to: '/profile', label: 'My profile', icon: UserRound },
 ];
 export function Layout() {
   const { profile, logout } = useAuth();
@@ -54,13 +54,14 @@ export function Layout() {
       <div className="bank-header-brand">
         <button ref={toggle} className="icon-button menu-toggle" aria-label="Open navigation" aria-expanded={open} onClick={() => setOpen(true)}><Menu size={22} /></button>
         <Link to="/" aria-label="AFI Banking Demo overview"><Brand /></Link>
-        <span className="business-division">Business documents<span>Customer portal</span></span>
+        <span className="business-division">Resolve <span>Customer services</span></span>
       </div>
       <div className="topbar-right">
         <div className="customer-menu"><span className="avatar">{initials}</span><span><strong>{profile!.name}</strong><small>{profile!.customerReference}</small></span></div>
         <button className="signout-control" aria-label="Sign out" disabled={leaving} onClick={async () => { setLeaving(true); try { await logout(); } finally { setLeaving(false); } }}><LogOut size={17} /><span>Logout</span></button>
       </div>
     </header>
+    <nav className="portal-topnav" aria-label="Customer services">{nav.map(item=><NavLink key={item.to} end={item.to==='/'} to={item.to}><item.icon size={17}/>{item.label}{item.to==='/corrections'&&count>0&&<span className="nav-count">{count}</span>}</NavLink>)}</nav>
     {open && <button className="nav-overlay" aria-label="Close navigation" onClick={() => setOpen(false)} />}
     <aside className={`sidebar ${open ? 'is-open' : ''}`} aria-label="Customer navigation"><div ref={menu} className="sidebar-inner">
       <div className="sidebar-brand"><div><p className="nav-label">CUSTOMER WORKSPACE</p><strong>Document services</strong></div><button className="icon-button mobile-close" aria-label="Close menu" onClick={() => { setOpen(false); toggle.current?.focus(); }}><X size={20} /></button></div>

@@ -1,25 +1,17 @@
-import { ArrowRight, CheckCircle2, ClipboardPenLine, Clock3, FilePlus2, Files } from 'lucide-react';
+import { ArrowRight, MapPin, Mail, Globe2, FileText, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useData } from '../data';
 import { ErrorBox, Loading, Panel, ViewLink } from '../components/ui';
 import { NotificationList, SubmissionTable } from '../components/Records';
-
 export function Overview() {
-  const { profile } = useAuth(); const { submissions, notifications } = useData();
-  const items = submissions.data || [];
-  const attention = items.filter(s => ['CORRECTION_REQUIRED', 'HUMAN_REVIEW', 'RESOLUTION_MANAGEMENT'].includes(s.status));
-  const stats = [
-    { label: 'Total submissions', value: items.length, icon: Files, tone: 'navy', detail: 'Your document applications' },
-    { label: 'Awaiting checks', value: items.filter(s => ['DRAFT', 'PENDING_VALIDATION'].includes(s.status)).length, icon: Clock3, tone: 'blue', detail: 'Pending recorded validation' },
-    { label: 'Needs attention', value: attention.length, icon: ClipboardPenLine, tone: 'amber', detail: 'Applications to review' },
-    { label: 'With Operations', value: items.filter(s => s.status === 'OPERATIONS').length, icon: CheckCircle2, tone: 'teal', detail: 'Checks passed and handed over' },
-  ];
-  return <div className="page-stack">
-    <section className="business-welcome"><div><p className="eyebrow">YOUR CUSTOMER WORKSPACE</p><h1>Welcome back, {profile!.name.split(' ')[0]}.</h1><p>Manage your document applications and outstanding requests.</p></div><Link className="button primary" to="/submit"><FilePlus2 size={17} />Submit service request<ArrowRight size={17} /></Link></section>
-    {submissions.error && <ErrorBox message={submissions.error} retry={() => void submissions.refresh()} />}
-    <div className="metrics-grid">{stats.map(s => <div className="metric" key={s.label}><div className="metric-top"><span>{s.label}</span><span className={`metric-symbol ${s.tone}`}><s.icon size={19} /></span></div><strong>{submissions.loading || submissions.error ? '\u2014' : s.value}</strong><small>{s.detail}</small></div>)}</div>
-    <Panel title="Recent submissions" description="Banking service requests and their recorded status." action={<ViewLink to="/submissions" />}>{submissions.loading ? <Loading /> : submissions.data ? <SubmissionTable items={items.slice(0, 4)} /> : null}</Panel>
-    <Panel title="Latest updates" description="The latest updates recorded for your applications." action={<ViewLink to="/notifications" />}>{notifications.error ? <ErrorBox message={notifications.error} retry={() => void notifications.refresh()} /> : notifications.loading ? <Loading /> : <NotificationList items={(notifications.data || []).slice(0, 3)} compact />}</Panel>
-  </div>;
+ const {profile}=useAuth();const {submissions,notifications}=useData();const items=submissions.data||[];
+ const attention=items.filter(s=>s.status==='CORRECTION_REQUIRED');
+ const pending=items.filter(s=>['DRAFT','PENDING_VALIDATION','RESOLUTION_MANAGEMENT','HUMAN_REVIEW'].includes(s.status));
+ return <div className="page-stack customer-home">
+ <section className="customer-masthead"><div><span className="edition-label">Your personal service desk</span><h1>Good to see you,<br/>{profile!.name.split(' ')[0]}.</h1><p>A change of address. A new contact. One place to keep everything moving.</p><Link className="button primary" to="/submit">Start a service request<ArrowRight size={17}/></Link></div><div className="request-passport"><span className="passport-mark">AFI / Resolve</span><span>Customer reference</span><strong>{profile!.customerReference}</strong><div><span><b>{submissions.loading||submissions.error?'?':pending.length}</b> in progress</span><span><b>{submissions.loading||submissions.error?'?':attention.length}</b> need your action</span></div><small>Independent demonstration / Synthetic records only</small></div></section>
+ {submissions.error&&<ErrorBox message={submissions.error} retry={()=>void submissions.refresh()}/>}
+ <section className="service-launcher" aria-label="Banking services"><div className="section-intro"><span className="edition-label">Make a change</span><h2>What can we help you with?</h2><p>Start with your existing profile. Tell us only what has changed.</p></div><div className="service-tiles">{[{type:'ADDRESS_CHANGE',title:'Mailing address',text:'Keep your correspondence coming to the right place.',icon:MapPin},{type:'CONTACT_UPDATE',title:'Contact details',text:'Update your email or phone with verification.',icon:Mail},{type:'TAX_RESIDENCY_UPDATE',title:'Tax residency',text:'Review your jurisdictions and declarations.',icon:Globe2}].map(s=><Link key={s.type} className="service-tile" to={'/submit/digital?requestType='+s.type}><s.icon size={23}/><h3>{s.title}</h3><p>{s.text}</p><span>Start request<ArrowRight size={17}/></span></Link>)}</div></section>
+ <div className="customer-inbox-grid"><Panel title="Your action inbox" action={<ViewLink to="/corrections"/>}>{submissions.loading?<Loading/>:submissions.error?<p className="form-body">Actions are unavailable until requests can be loaded.</p>:attention.length?<div className="action-inbox">{attention.map(s=><Link key={s.id} to={'/submissions/'+s.id}><FileText size={20}/><div><strong>A request needs your attention</strong><small>{s.caseReference}</small></div><ArrowRight size={16}/></Link>)}</div>:<div className="inbox-clear"><CheckCircle2 size={30}/><h3>Nothing to do right now</h3><p>We will show any correction requests here.</p></div>}</Panel><Panel title="Latest updates" action={<ViewLink to="/notifications"/>}>{notifications.error?<ErrorBox message={notifications.error}/>:notifications.loading?<Loading/>:<NotificationList items={(notifications.data||[]).slice(0,3)} compact/>}</Panel></div>
+ <Panel title="Your requests" action={<ViewLink to="/submissions"/>}>{submissions.loading?<Loading/>:submissions.data?<SubmissionTable items={items.slice(0,4)}/>:null}</Panel></div>;
 }
