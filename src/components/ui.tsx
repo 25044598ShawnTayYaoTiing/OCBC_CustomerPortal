@@ -22,12 +22,15 @@ export function Brand({ inverse = false }: { inverse?: boolean }) {
 
 export const statusLabels: Record<string, string> = {
   DRAFT: 'Draft',
-  PENDING_VALIDATION: 'Awaiting checks',
+  PENDING_VALIDATION: 'Checking your documents',
   CORRECTION_REQUIRED: 'Action required',
-  HUMAN_REVIEW: 'Resolution Management',
-  RESOLUTION_MANAGEMENT: 'Resolution Management',
-  READY: 'Checks passed',
-  OPERATIONS: 'With Operations',
+  HUMAN_REVIEW: 'Under review',
+  RESOLUTION_MANAGEMENT: 'Under review',
+  READY: 'Awaiting processing',
+  OPERATIONS: 'Sent for processing',
+  ON_HOLD: 'Under review',
+  REJECTED: 'Rejected',
+  COMPLETED: 'Completed',
 };
 
 export function Badge({ status }: { status: string }) {
@@ -57,7 +60,7 @@ export function PageHeader({ eyebrow, title, description, children }: { eyebrow?
   return (
     <header className="page-heading">
       <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+
         <h1>{title}</h1>
         <p>{description}</p>
       </div>

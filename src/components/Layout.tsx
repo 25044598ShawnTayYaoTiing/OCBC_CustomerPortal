@@ -7,13 +7,10 @@ import { useIntent } from '../lib/upload-intent';
 import { Brand, Notice } from './ui';
 
 const nav = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/submit', label: 'New request', icon: FilePlus2 },
   { to: '/submissions', label: 'My requests', icon: Files },
-  { to: '/corrections', label: 'Action inbox', icon: ClipboardPenLine },
-  { to: '/notifications', label: 'Notifications', icon: Bell },
-  { to: '/addresses', label: 'Change address', icon: UserRound },
-  { to: '/profile', label: 'Account & profile', icon: UserRound },
+  { to: '/profile', label: 'Profile', icon: UserRound },
 ];
 
 export function Layout() {
@@ -51,7 +48,7 @@ export function Layout() {
     return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', key); };
   }, [open]);
 
-  const section = nav.find(item => item.to !== '/' && location.pathname.startsWith(item.to))?.label || 'Overview';
+  const section = nav.find(item => item.to !== '/' && location.pathname.startsWith(item.to))?.label || 'Home';
   const initials = profile!.name.split(' ').slice(0, 2).map(n => n[0]).join('');
 
   return (
@@ -74,12 +71,12 @@ export function Layout() {
               ))}
             </nav>
           </div>
-          <div className="header-right">
+          <div className="header-right"><Link className="icon-button" to="/notifications" aria-label="Updates"><Bell size={19}/></Link>
             <div className="user-chip">
               <span className="user-avatar">{initials}</span>
               <span className="user-chip-meta">
                 <strong>{profile!.name}</strong>
-                <small>{profile!.customerReference}</small>
+
               </span>
             </div>
             <button
@@ -95,8 +92,8 @@ export function Layout() {
         </div>
       </header>
 
-      {open && <button className="nav-overlay" aria-label="Close navigation" onClick={() => setOpen(false)} />}
-      <aside className={`mobile-drawer ${open ? 'is-open' : ''}`} aria-label="Customer navigation" ref={menu}>
+      {open && <button className="nav-overlay" aria-label="Close navigation" onClick={() => { setOpen(false); toggle.current?.focus(); }} />}
+      {open && <aside className="mobile-drawer is-open" role="dialog" aria-modal="true" aria-label="Customer navigation" ref={menu}>
         <div className="drawer-header">
           <Brand />
           <button className="icon-button" aria-label="Close menu" onClick={() => { setOpen(false); toggle.current?.focus(); }}>
@@ -116,20 +113,9 @@ export function Layout() {
           <strong>Synthetic demo</strong>
           <p>Use synthetic records only. Contact your demo administrator for help.</p>
         </div>
-      </aside>
+      </aside>}
 
       <main id="main-content" tabIndex={-1} className="portal-main">
-        <div className="context-bar">
-          <div className="breadcrumbs">
-            <Link to="/">Customer portal</Link>
-            <ChevronRight size={13} />
-            <strong>{section}</strong>
-          </div>
-          <span className="demo-pill">
-            <ShieldCheck size={13} />
-            Synthetic demonstration · SGT
-          </span>
-        </div>
         {pending && location.pathname !== pending.returnTo && (
           <div style={{ marginBottom: 20 }}>
             <Notice>

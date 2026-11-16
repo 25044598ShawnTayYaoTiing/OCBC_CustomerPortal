@@ -1,3 +1,4 @@
+import { AddressFields } from '../components/AddressFields';
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -56,6 +57,7 @@ export function DigitalForm() {
     authorisation: false,
   }));
 
+  const [addressReady, setAddressReady] = useState(!!id);
   const [review, setReview] = useState(false);
   const [loading, setLoading] = useState(!!id);
   const [loaded, setLoaded] = useState(!id);
@@ -240,6 +242,7 @@ export function DigitalForm() {
             return;
           }
           if (!review && !retry) {
+            if (address && !addressReady) { setError("Find your new address or enter it for manual review."); return; }
             setReview(true);
             return;
           }
@@ -259,7 +262,7 @@ export function DigitalForm() {
                     aria-label="Request type"
                     value={values.requestType}
                     disabled={!!id}
-                    onChange={(e) => update("requestType", e.target.value)}
+                    onChange={(e) => { update("requestType", e.target.value); setAddressReady(false); }}
                   >
                     {serviceRequests.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -284,22 +287,9 @@ export function DigitalForm() {
                     ? "New residential address"
                     : "New mailing address"
                 }
-                description="Your existing account and identity stay the same."
+                description="Find your new building address, then add your unit number if applicable."
               >
-                <div className="eform-fields">
-                  <label className="full-width">
-                    {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
-                      ? "Requested residential address"
-                      : "Requested mailing address"}
-                    <input
-                      required
-                      maxLength={500}
-                      autoComplete="street-address"
-                      value={values.mailingAddress}
-                      onChange={(e) => update("mailingAddress", e.target.value)}
-                    />
-                  </label>
-                </div>
+                <AddressFields key={values.requestType} existing={!!id} value={values.mailingAddress} onChange={value => update('mailingAddress',value)} onReady={setAddressReady}/>
               </Panel>
             )}
 
@@ -375,7 +365,7 @@ export function DigitalForm() {
                     After submission, verify an email OTP. A changed email is
                     verified at the new address; a phone-only change uses your
                     registered email to authorise the request. New phone
-                    ownership still requires independent Resolution Management
+                    ownership still requires independent staff
                     verification.
                   </Notice>
                 </div>
@@ -459,8 +449,7 @@ export function DigitalForm() {
                     I authorise this{" "}
                     {serviceLabel(values.requestType).toLowerCase()} using
                     synthetic demonstration information and the evidence
-                    provided. This records an authenticated declaration, not a
-                    handwritten signature.
+                    provided.
                   </span>
                 </label>
               </div>
@@ -481,6 +470,7 @@ export function DigitalForm() {
                   <dt>Customer reference</dt>
                   <dd className="mono">{profile!.customerReference}</dd>
                 </div>
+                {address && <div><dt>Current address on your profile</dt><dd>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? p.residentialAddress : p.mailingAddress}</dd></div>}
                 {address && (
                   <div>
                     <dt>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "New residential address" : "New mailing address"}</dt>
@@ -565,7 +555,7 @@ export function DigitalForm() {
           {retry && (
             <Notice>
               The outcome is unconfirmed. Retry the same request in this tab or
-              check My submissions before creating another request.
+              check My requests before creating another request.
             </Notice>
           )}
 
@@ -586,7 +576,7 @@ export function DigitalForm() {
                   </button>
                 )}
                 <Link className="text-link" to="/submissions">
-                  My submissions
+                  My requests
                 </Link>
               </div>
               <button
@@ -594,7 +584,7 @@ export function DigitalForm() {
                 disabled={
                   busy ||
                   locked ||
-                  (!retry && stage !== 0 && !values.authorisation)
+                  (!retry && stage !== 0 && (!values.authorisation || (address && !addressReady)))
                 }
               >
                 {busy
@@ -614,65 +604,7 @@ export function DigitalForm() {
           </div>
         </div>
 
-        <aside className="submission-aside">
-          <div className="aside-card">
-            <h3 style={{ fontSize: 15 }}>Existing customer profile</h3>
-            <dl className="data-list">
-              <div>
-                <dt>Customer</dt>
-                <dd>{profile!.name}</dd>
-              </div>
-              <div>
-                <dt>Customer reference</dt>
-                <dd className="mono">{profile!.customerReference}</dd>
-              </div>
-              <div>
-                <dt>Synthetic identity</dt>
-                <dd className="mono">{p.identityNumber}</dd>
-              </div>
-              <div>
-                <dt>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "Current residential address" : "Current mailing address"}</dt>
-                <dd>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? p.residentialAddress : p.mailingAddress}</dd>
-              </div>
-              <div>
-                <dt>Registered contact</dt>
-                <dd>
-                  {p.email}
-                  <br />
-                  {p.mobile}
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div className="aside-card">
-            <h3 style={{ fontSize: 14 }}>{serviceLabel(values.requestType)}</h3>
-            {address ? (
-              <Notice>
-                A supporting PDF must contain your customer reference and
-                corroborate the requested new {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "residential" : "mailing"} address.
-              </Notice>
-            ) : foreign ? (
-              <Notice>
-                A supporting PDF must corroborate the declared foreign tax
-                jurisdiction and TIN and identify your customer reference.
-              </Notice>
-            ) : contact ? (
-              <p className="muted">
-                Contact updates follow deterministic verification checks. An
-                unavailable OTP channel keeps the request unverified.
-              </p>
-            ) : (
-              <p className="muted">
-                No extra supporting PDF is required for a Singapore-only
-                declaration.
-              </p>
-            )}
-            <p className="muted">
-              Resolution Management approves the validated request for
-              Operations.
-            </p>
-          </div>
-        </aside>
+        <aside className="submission-aside"><div className="aside-card"><h2>What happens next</h2><p>We check your request and any documents. If something needs updating, you?ll see one clear action in My requests.</p>{address && <p>You?ll need one supporting PDF showing the new address and your customer reference.</p>}<p>Your request is sent for processing only after the required checks and approval.</p></div></aside>
       </form>
     </div>
   );

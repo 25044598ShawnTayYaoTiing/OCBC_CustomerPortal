@@ -42,36 +42,36 @@ export function Submit() {
     <div className="page-stack">
       <PageHeader
         eyebrow="New Service Request"
-        title="Choose how you want to submit"
-        description="Both routes run the same automated evidence checks and Resolution Management review."
+        title="New request"
+        description="Fill in a guided form, or upload a request you already have as a PDF."
       />
       <div className="method-grid">
         <article className="method-card recommended">
           <span className="method-tag">Recommended · Instant Prefill</span>
           <div className="service-card-icon"><FileCheck2 size={22} /></div>
-          <h2>Guided Digital eForm</h2>
+          <h2>Fill in a form</h2>
           <p>
-            Start with your existing synthetic customer profile. Only fields relevant to your selected service appear, with real-time validation.
+            Your existing details are filled in for you. Tell us what you want to change.
           </p>
           <Link className="button primary" to="/submit/digital">
-            Complete digital eForm
+            Start a request
             <ArrowRight size={16} />
           </Link>
         </article>
 
         <article className="method-card">
           <span className="method-tag" style={{ background: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}>
-            Document Package
+            Already have a form?
           </span>
           <div className="service-card-icon" style={{ background: 'var(--bg-subtle)', color: 'var(--text-primary)' }}>
             <FileText size={22} />
           </div>
-          <h2>Upload PDF Forms</h2>
+          <h2>Upload a PDF</h2>
           <p>
             Upload a synthetic service-request PDF for your customer profile along with any supporting evidence documents.
           </p>
           <button className="button secondary" onClick={() => setMethod(true)}>
-            Upload PDF forms
+            Choose PDF files
             <ArrowRight size={16} />
           </button>
         </article>
@@ -104,7 +104,7 @@ function PdfSubmit() {
     <div className="page-stack">
       <PageHeader
         eyebrow="PDF Upload Workflow"
-        title="Upload a banking service request"
+        title="Upload a request"
         description="Submit synthetic request documents for your existing customer profile."
       />
       <ol className="wizard-steps" aria-label="Submission steps">
@@ -255,7 +255,7 @@ function PdfSubmit() {
                   <span className="confirmation-symbol"><CheckCircle2 size={28} /></span>
                   <p className="eyebrow">Submission Confirmed</p>
                   <h2>Your documents are received.</h2>
-                  <p>Keep this reference to track validation and Resolution Management updates.</p>
+                  <p>Keep this reference to track your request.</p>
                   <div className="confirmation-reference">
                     <small className="muted">Submission reference</small>
                     <Reference value={confirmed.submission.caseReference} />

@@ -34,29 +34,7 @@ export function Login() {
           <p>
             Update your mailing address, contact details, or tax residency from your existing profile—with real-time document checks and clear status tracking.
           </p>
-          <div className="auth-preview-card" aria-hidden="true">
-            <div className="auth-preview-step">
-              <span>01</span>
-              <div>
-                <strong>Guided eForm or PDF upload</strong>
-                <small>Prefilled from your synthetic customer profile</small>
-              </div>
-            </div>
-            <div className="auth-preview-step">
-              <span>02</span>
-              <div>
-                <strong>Automated evidence validation</strong>
-                <small>Instant checks catch missing fields before handover</small>
-              </div>
-            </div>
-            <div className="auth-preview-step">
-              <span>03</span>
-              <div>
-                <strong>Direct resolution &amp; tracking</strong>
-                <small>Respond to any correction request in one workspace</small>
-              </div>
-            </div>
-          </div>
+
         </div>
         <div className="auth-showcase-foot">
           <span>AFI Resolve 2.0 · Customer Portal</span>
@@ -69,7 +47,7 @@ export function Login() {
           <div className="auth-card-head">
             <p className="eyebrow">Customer Access</p>
             <h2>Sign in to your portal</h2>
-            <p>Enter your provisioned synthetic customer credentials.</p>
+            <p>Sign in to manage your banking requests.</p>
           </div>
           {reason && <p className="alert alert-info" role="status" style={{ marginBottom: 16 }}>{reason}</p>}
           {configurationError && <div style={{ marginBottom: 16 }}><ErrorBox message={configurationError} /></div>}
