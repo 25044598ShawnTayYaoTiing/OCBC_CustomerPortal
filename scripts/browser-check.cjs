@@ -53,6 +53,7 @@ async function login(page) {
       return r.json();
     }, { apiBase, token: session.accessToken });
     await page.getByRole('link', { name: 'Submit new documents' }).click();
+    await page.getByRole('button', { name: 'Upload PDF forms', exact: true }).click();
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.getByLabel('Choose PDF documents', { exact: true }).setInputFiles(original);
     await visible(page.getByText('customer-information.pdf', { exact: true }));
@@ -119,12 +120,12 @@ async function login(page) {
       await staffPage.getByLabel('Username', { exact: true }).fill(process.env.AFI_STAFF_USERNAME || 'reviewer');
       await staffPage.getByLabel('Password', { exact: true }).fill(process.env.AFI_STAFF_PASSWORD);
       await staffPage.getByRole('button', { name: 'Sign in to workspace' }).click();
-      await visible(staffPage.getByRole('heading', { name: 'Operations overview' }));
+      await visible(staffPage.getByRole('heading', { name: 'Resolution Management', exact: true }));
       await staffPage.getByRole('link', { name: 'Submissions', exact: true }).click();
       await staffPage.getByLabel('Filter by source', { exact: true }).selectOption('CUSTOMER_PORTAL');
       await staffPage.locator('.table-toolbar input[type=search]').fill(id);
       const row = staffPage.locator('tr').filter({ has: staffPage.locator(`a[href^="/submissions/${id}"]`) });
-      await visible(row); assert.match(await row.innerText(), /Customer Portal/);
+      await visible(row); assert.match(await row.innerText(), /Customer PDF/);
       await staffPage.screenshot({ path: path.join(out, 'staff-received.png'), fullPage: true });
       await row.locator('a.record-link').click();
       await visible(staffPage.getByText('2 issues need attention', { exact: true }));
@@ -137,8 +138,13 @@ async function login(page) {
     await visible(page.getByText('tax-residency-corrected.pdf', { exact: true }));
     const correction = page.waitForResponse(r => r.url().endsWith('/replacement') && r.request().method() === 'POST', { timeout: 600000 });
     await page.getByRole('button', { name: 'Submit correction', exact: true }).click();
-    const result = await (await correction).json();
-    assert.equal(result.submission.status, 'OPERATIONS'); assert.deepEqual(result.corrections, []);
+    let result = await (await correction).json();
+    assert.equal(result.submission.status, 'RESOLUTION_MANAGEMENT'); assert.deepEqual(result.corrections, []);
+    if (!staffPage) throw new Error('AFI_STAFF_PASSWORD is required to verify final Resolution Management approval.');
+    await visible(staffPage.getByRole('button', { name: 'Approve for Operations', exact: true }));
+    await staffPage.getByRole('button', { name: 'Approve for Operations', exact: true }).click();
+    result = await page.evaluate(async ({ apiBase, token, id }) => { const response = await fetch(apiBase + '/submissions/' + id, { headers: { Authorization: 'Bearer ' + token } }); if (!response.ok) throw new Error('Failed to confirm approved case'); return response.json(); }, { apiBase, token: session.accessToken, id });
+    assert.equal(result.submission.status, 'OPERATIONS');
     await visible(page.getByRole('heading', { name: 'Your application is with Operations.', exact: true }));
     await visible(page.locator('.no-requests strong'));
     await page.screenshot({ path: path.join(out, 'operations-desktop.png'), fullPage: true });
