@@ -604,7 +604,7 @@ export function DigitalForm() {
           </div>
         </div>
 
-        <aside className="submission-aside"><div className="aside-card"><h2>What happens next</h2><p>We check your request and any documents. If something needs updating, you?ll see one clear action in My requests.</p>{address && <p>You?ll need one supporting PDF showing the new address and your customer reference.</p>}<p>Your request is sent for processing only after the required checks and approval.</p></div></aside>
+        <aside className="submission-aside"><div className="aside-card"><h2>What happens next</h2><p>We check your request and any documents. If something needs updating, you will see one clear action in My requests.</p>{address && <p>You will need one supporting PDF showing the new address and your customer reference.</p>}<p>Your request is sent for processing only after the required checks and approval.</p></div></aside>
       </form>
     </div>
   );
