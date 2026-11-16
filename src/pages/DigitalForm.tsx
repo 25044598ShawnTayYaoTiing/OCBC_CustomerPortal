@@ -447,16 +447,7 @@ export function DigitalForm() {
 
             <Panel title="Customer declaration and authorisation">
               <div className="eform-fields">
-                <label>
-                  Declaration date
-                  <input
-                    type="date"
-                    required
-                    max={today()}
-                    value={values.declarationDate}
-                    onChange={(e) => update("declarationDate", e.target.value)}
-                  />
-                </label>
+                <p className="full-width">The declaration time is recorded automatically when you submit.</p>
                 <label className="checkbox-label full-width">
                   <input
                     type="checkbox"
@@ -492,7 +483,7 @@ export function DigitalForm() {
                 </div>
                 {address && (
                   <div>
-                    <dt>New mailing address</dt>
+                    <dt>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "New residential address" : "New mailing address"}</dt>
                     <dd>{values.mailingAddress}</dd>
                   </div>
                 )}
@@ -547,8 +538,8 @@ export function DigitalForm() {
                   </>
                 )}
                 <div>
-                  <dt>Declaration date</dt>
-                  <dd>{values.declarationDate}</dd>
+                  <dt>Declaration timestamp</dt>
+                  <dd>Recorded automatically on submission</dd>
                 </div>
                 <div>
                   <dt>Authorisation</dt>
@@ -640,8 +631,8 @@ export function DigitalForm() {
                 <dd className="mono">{p.identityNumber}</dd>
               </div>
               <div>
-                <dt>Current mailing address</dt>
-                <dd>{p.mailingAddress}</dd>
+                <dt>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "Current residential address" : "Current mailing address"}</dt>
+                <dd>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? p.residentialAddress : p.mailingAddress}</dd>
               </div>
               <div>
                 <dt>Registered contact</dt>
@@ -658,7 +649,7 @@ export function DigitalForm() {
             {address ? (
               <Notice>
                 A supporting PDF must contain your customer reference and
-                corroborate the requested new mailing address.
+                corroborate the requested new {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "residential" : "mailing"} address.
               </Notice>
             ) : foreign ? (
               <Notice>

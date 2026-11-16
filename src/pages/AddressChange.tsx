@@ -27,7 +27,7 @@ export function AddressChange() {
     if (!/^\d{6}$/.test(postal)) { setError('Enter a six-digit Singapore postal code.'); return; }
     setBusy('search'); setError(''); setSelected(null); setSearch(null); setManual(false); changed();
     try { setSearch(await api<SearchResult>(`/addresses/search?postalCode=${encodeURIComponent(postal)}`, { timeout: 90000 })); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'Address lookup could not be completed.'); setSearch({ status: 'UNAVAILABLE', message: 'The address lookup could not be completed. Retry, or request manual review.', postalCode: postal, candidates: [], complete: false, checkedAt: new Date().toISOString() }); }
+    catch (failure) { setError('We could not verify your address. Try again or request manual review.'); setSearch({ status: 'UNAVAILABLE', message: 'The address lookup could not be completed. Retry, or request manual review.', postalCode: postal, candidates: [], complete: false, checkedAt: new Date().toISOString() }); }
     finally { setBusy(''); }
   }
 
@@ -46,7 +46,7 @@ export function AddressChange() {
     {error && <ErrorBox message={error} />}{notice && <Notice success={step === 'submitted'}>{notice}</Notice>}
     <Panel title="1. Registered address" description="Loaded from your customer record. This is not the address being validated.">
       <div className="form-body"><label>Address to change<select value={kind} disabled={!!busy} onChange={event => { setKind(event.target.value); changed(); }}><option value="MAILING">Mailing address</option><option value="RESIDENTIAL">Residential address</option></select></label>
-        {registered.loading ? <Loading /> : old ? <div className="address-record"><strong>{old.address.address}</strong>{old.address.unit && <p>Unit: {old.address.unit}</p>}<small>Registered record · Updated {date(old.updatedAt, true)} SGT</small></div> : <p className="context-note">No registered {kind.toLowerCase()} address is recorded. We will not infer one from your uploaded documents.</p>}
+        {registered.loading ? <Loading /> : registered.error ? <p className="context-note">Your registered address could not be loaded. Try refreshing.</p> : old ? <div className="address-record"><strong>{old.address.address}</strong>{old.address.unit && <p>Unit: {old.address.unit}</p>}<small>Registered record · Updated {date(old.updatedAt, true)} SGT</small></div> : <p className="context-note">No registered {kind.toLowerCase()} address is recorded. We will not infer one from your uploaded documents.</p>}
       </div>
     </Panel>
     {step !== 'submitted' && <Panel title={step === 'review' ? '3. Review your request' : '2. Find your new address'} description="OneMap checks the building address. Enter your unit number separately; it does not verify unit numbers or occupancy.">
