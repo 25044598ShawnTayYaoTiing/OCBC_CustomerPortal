@@ -4,5 +4,6 @@ import App from './App';
 import './styles.css';
 import './banking.css';
 import './afi-theme.css';
+import "./enterprise.css";
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);

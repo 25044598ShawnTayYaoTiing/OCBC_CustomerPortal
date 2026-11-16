@@ -7,8 +7,8 @@ export function Brand({ inverse = false }: { inverse?: boolean }) {
   return <div className={`brand ${inverse ? 'brand-inverse' : ''}`}><span className="brand-mark"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 29 20 9l11 20h-7l-4-8-4 8Z" fill="currentColor" /><path d="M9 33h22" stroke="currentColor" strokeWidth="2" /></svg></span><span><strong>AFI <span>Banking</span></strong><small>DEMO · BUSINESS DOCUMENTS</small></span></div>;
 }
 export const statusLabels: Record<string, string> = {
-  DRAFT: 'Draft', PENDING_VALIDATION: 'Awaiting checks', CORRECTION_REQUIRED: 'Action required',
-  HUMAN_REVIEW: 'Under review', READY: 'Checks passed', OPERATIONS: 'With Operations',
+  DRAFT: 'Draft', PENDING_VALIDATION: 'Awaiting checks', CORRECTION_REQUIRED: 'Needs correction',
+  HUMAN_REVIEW: 'Needs review', READY: 'Checks passed', OPERATIONS: 'With Operations',
 };
 export function Badge({ status }: { status: string }) { return <span className={`status status-${status.toLowerCase()}`}><i />{statusLabels[status] || status.replaceAll('_', ' ').toLowerCase()}</span>; }
 export function date(value: string | null, time = false) {

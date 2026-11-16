@@ -12,6 +12,7 @@ const nav = [
   { to: '/submissions', label: 'My submissions', icon: Files },
   { to: '/corrections', label: 'Corrections required', icon: ClipboardPenLine },
   { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/addresses', label: 'Change address', icon: UserRound },
   { to: '/profile', label: 'Account & profile', icon: UserRound },
 ];
 export function Layout() {

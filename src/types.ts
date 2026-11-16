@@ -8,6 +8,7 @@ export interface Submission {
 export interface Document { id: string; type: string; version: number; filename: string }
 export interface Correction {
   id: string; status: string; documentType: string; documentIds: string[]; instruction: string;
+  reason?: string; ruleName?: string; assignedRole?: string; requiredDocumentType?: string | null;
 }
 export interface Detail { submission: Submission; documents: Document[]; corrections: Correction[] }
 export interface Notification {
