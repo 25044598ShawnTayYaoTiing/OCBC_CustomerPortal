@@ -15,7 +15,7 @@ export function customerActions(detail: Detail): Correction[] {
 export function requestNextStep(status: string, actions: number): string {
   if (status === 'OPERATIONS') return 'Your request has been sent for processing. No action is needed from you.';
   if (status === 'REJECTED') return 'Your request was not approved. Check the updates below for the decision.';
-  if (actions) return 'Please complete the action below. We?ll check your update automatically.';
-  if (status === 'PENDING_VALIDATION') return 'We?re checking your documents. You can return here for updates.';
-  return 'Your request is under review. We?ll let you know if we need anything else.';
+  if (actions) return 'Please complete the action below. We will check your update automatically.';
+  if (status === 'PENDING_VALIDATION') return 'We are checking your documents. You can return here for updates.';
+  return 'Your request is under review. We will let you know if we need anything else.';
 }
