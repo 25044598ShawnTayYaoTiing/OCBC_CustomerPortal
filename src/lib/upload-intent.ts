@@ -5,6 +5,7 @@ export { sameFiles } from './recovery.mjs';
 
 export interface FileFingerprint { name: string; size: number; sha256: string }
 export interface UploadIntent {
+  combineImages?: boolean;
   key: string; customerId: string; apiBase: string; path: string; returnTo: string;
   createdAt: string; files: FileFingerprint[];
 }

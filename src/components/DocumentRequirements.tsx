@@ -20,7 +20,7 @@ export function DocumentRequirements({
       {address ? (
         <>
           <p>
-            <strong>Supporting PDF required.</strong> Provide a text-readable
+            <strong>Supporting document required.</strong> Provide a readable
             utility bill, bank statement or other address evidence showing the
             requested new{" "}
             {requestType === "RESIDENTIAL_ADDRESS_CHANGE"
@@ -39,10 +39,10 @@ export function DocumentRequirements({
           <p>
             {foreign ? (
               <strong>
-                Supporting PDF required for foreign tax residency.
+                Supporting document required for foreign tax residency.
               </strong>
             ) : (
-              "For Singapore-only tax residency, confirm the declaration. No supporting PDF is required by the current prototype policy."
+              "For Singapore-only tax residency, confirm the declaration. No supporting document is required by the current prototype policy."
             )}
           </p>
           <p>
@@ -55,21 +55,21 @@ export function DocumentRequirements({
         </>
       ) : requestType === "CONTACT_UPDATE" ? (
         <p>
-          No supporting PDF is required by the current prototype policy. After
+          No supporting document is required by the current prototype policy. After
           submission, complete the email OTP check. A new phone number also
-          requires independent staff verification; uploading a PDF does not
+          requires independent staff verification; uploading a document does not
           replace either check.
         </p>
       ) : (
         <p>
-          No supporting PDF is required by the current prototype policy. Select
+          No supporting document is required by the current prototype policy. Select
           the account type and currency. For a current account, provide a
           source-of-funds description. Staff must still review and approve the
           request.
         </p>
       )}
       <small>
-        PDF only · Up to 10 MB per file · Maximum 10 files. Files must be
+        PDF, JPG, JPEG, PNG · Up to 10 MB per file · Maximum 10 files. Files must be
         readable, complete and labelled as synthetic demonstration data.
       </small>
     </section>

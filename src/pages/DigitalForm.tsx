@@ -14,7 +14,7 @@ import { api, ApiError } from "../lib/api";
 import { serviceLabel, serviceRequests } from "../lib/service-requests";
 import type { Detail, DigitalValues } from "../types";
 import { ErrorBox, Loading, Notice, PageHeader, Panel } from "../components/ui";
-import { FilePicker, validateFiles } from "../components/Upload";
+import { FilePicker, ImagePageOption, validateFiles } from "../components/Upload";
 import { DocumentRequirements } from "../components/DocumentRequirements";
 import { readDraft, saveDraft, clearDraft } from "../lib/request-draft";
 import { LegacyDigitalForm } from "./LegacyDigitalForm";
@@ -54,6 +54,8 @@ export function DigitalForm() {
   const draftKey = `${profile!.id}:${id || "new"}`;
   const draft = readDraft(draftKey);
   const [files, setFiles] = useState<File[]>(() => draft?.files || []);
+  const [combineImages, setCombineImages] = useState(draft?.combineImages || false);
+  const [progress, setProgress] = useState(0);
   const [existingSupport, setExistingSupport] = useState(false);
   const submitting = useRef(false);
 
@@ -99,11 +101,12 @@ export function DigitalForm() {
     saveDraft(draftKey, {
       values,
       files,
+      combineImages,
       addressReady,
       retry,
       intent: intent.current,
     });
-  }, [draftKey, values, files, addressReady, retry]);
+  }, [draftKey, values, files, combineImages, addressReady, retry]);
 
   useEffect(() => {
     if (!id) return;
@@ -191,7 +194,7 @@ export function DigitalForm() {
       return;
     }
     if (!retry && supportRequired && !existingSupport && !files.length) {
-      setError("Add the required supporting PDF before submitting.");
+      setError("Add the required supporting document before submitting.");
       setStage(2);
       return;
     }
@@ -205,6 +208,7 @@ export function DigitalForm() {
     if (submitting.current) return;
     submitting.current = true;
     setBusy(true);
+    setProgress(0);
     setError("");
     if (!intent.current) {
       intent.current = {
@@ -228,6 +232,7 @@ export function DigitalForm() {
     saveDraft(draftKey, {
       values,
       files,
+      combineImages,
       addressReady,
       retry: true,
       intent: intent.current,
@@ -240,6 +245,7 @@ export function DigitalForm() {
           new Blob([intent.current.body], { type: "application/json" }),
         );
         files.forEach((file) => multipart.append("files", file, file.name));
+        multipart.append("combineImages", String(combineImages));
       }
       const result = await api<Detail>(
         (id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms") +
@@ -254,6 +260,7 @@ export function DigitalForm() {
           },
           body: intent.current.multipart ? multipart : intent.current.body,
           timeout: 600000,
+          onUploadProgress: setProgress,
         },
       );
       if (
@@ -314,7 +321,7 @@ export function DigitalForm() {
   if (pending) {
     return (
       <Notice>
-        Confirm your pending PDF upload first.{" "}
+        Confirm your pending document upload first.{" "}
         <Link className="text-link" to={pending.returnTo}>
           Resume upload
         </Link>
@@ -386,7 +393,7 @@ export function DigitalForm() {
               !existingSupport &&
               !files.length
             ) {
-              setError("Add a supporting PDF matching the requirements below.");
+              setError("Add a supporting document matching the requirements below.");
               return;
             }
             setStage(stage + 1);
@@ -626,11 +633,12 @@ export function DigitalForm() {
                 />
                 {existingSupport && (
                   <Notice>
-                    A supporting PDF is already saved with this request. You can
-                    add further evidence here or replace the saved PDF from My
+                    A supporting document is already saved with this request. You can
+                    add further evidence here or replace the saved document from My
                     requests.
                   </Notice>
                 )}
+                <ImagePageOption checked={combineImages} onChange={setCombineImages} disabled={busy || retry || locked} />
                 <FilePicker
                   files={files}
                   setFiles={setFiles}
@@ -747,7 +755,7 @@ export function DigitalForm() {
                   <p>
                     {existingSupport
                       ? "Using the supporting documents already saved with this request."
-                      : "No supporting PDF selected for this service."}
+                      : "No supporting document selected for this service."}
                   </p>
                 )}
                 <p>
@@ -776,10 +784,10 @@ export function DigitalForm() {
           )}
           {busy && (
             <div className="processing-notice" role="status">
-              <progress aria-label="Submitting request" />
+              <progress aria-label="Document upload progress" value={progress} max={100} />{progress < 100 ? ` Uploading: ${progress}%` : " Upload complete. Checking documents..."}
               <p>
                 Uploading your declaration
-                {files.length ? ` and ${files.length} supporting PDF(s)` : ""},
+                {files.length ? ` and ${files.length} supporting document(s)` : ""},
                 then checking the package. Keep this tab open. Your request is
                 confirmed only when the server responds.
               </p>

@@ -794,3 +794,6 @@ tbody tr:hover { background: #F8FAFC; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.selected-image-preview { display: block; max-width: 100%; max-height: 70vh; object-fit: contain; margin: 1rem auto; }
+.file-picker .dropzone button { margin: .3rem; }

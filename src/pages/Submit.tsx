@@ -72,7 +72,7 @@ export function Submit() {
       <PageHeader
         eyebrow="New Service Request"
         title="New request"
-        description="Fill in a guided form, or upload a request you already have as a PDF."
+        description="Fill in a guided form, or upload a request you already have as a PDF or image."
       />
       <div className="method-grid">
         <article className="method-card recommended">
@@ -110,13 +110,13 @@ export function Submit() {
           >
             <FileText size={22} />
           </div>
-          <h2>Upload a PDF</h2>
+          <h2>Upload a document or image</h2>
           <p>
-            Upload a synthetic service-request PDF for your customer profile
+            Upload a synthetic service-request document for your customer profile
             along with any supporting evidence documents.
           </p>
           <button className="button secondary" onClick={() => setMethod(true)}>
-            Choose PDF files
+            Choose files
             <ArrowRight size={16} />
           </button>
         </article>
@@ -140,6 +140,7 @@ function PdfSubmit() {
       ? "/submissions"
       : "/submissions?requestType=" + encodeURIComponent(requestType),
     "/submit",
+    draft?.combineImages,
   );
   const [files, setFiles] = useState<File[]>(
     () => draft?.files || upload.initialFiles(),
@@ -152,15 +153,15 @@ function PdfSubmit() {
   );
   useEffect(() => {
     if (step < 3)
-      savePdfDraft(profile!.id, { requestType, files, step, acknowledged });
-  }, [profile, requestType, files, step, acknowledged]);
+      savePdfDraft(profile!.id, { requestType, files, step, acknowledged, combineImages: upload.combineImages });
+  }, [profile, requestType, files, step, acknowledged, upload.combineImages]);
   const [confirmed, setConfirmed] = useState<Detail>();
   const blocked = upload.pending && !upload.samePath;
 
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="PDF Upload Workflow"
+        eyebrow="Document upload workflow"
         title="Upload a request"
         description="Submit synthetic request documents for your existing customer profile."
       />
@@ -193,13 +194,13 @@ function PdfSubmit() {
             {step === 0 && (
               <Panel
                 title="Application information"
-                description="Select the service request type for your PDF package."
+                description="Select the service request type for your document package."
               >
                 <div className="form-body">
                   <label>
                     Request type
                     <select
-                      aria-label="PDF request type"
+                      aria-label="Document request type"
                       value={requestType}
                       disabled={!!upload.pending}
                       onChange={(e) => setRequestType(e.target.value)}
@@ -228,7 +229,7 @@ function PdfSubmit() {
                     </div>
                   </dl>
                   <p className="muted">
-                    Your PDFs must reference this customer reference.
+                    Your documents must reference this customer reference.
                   </p>
                 </div>
                 <div className="form-actions">
@@ -250,7 +251,7 @@ function PdfSubmit() {
                     ? "Restore your upload"
                     : "Upload your documents"
                 }
-                description="Choose text-readable PDFs labelled as synthetic demonstration data."
+                description="Choose PDFs, screenshots or clear photos labelled as synthetic demonstration data."
               >
                 <div className="form-body">
                   {upload.samePath && (
@@ -445,9 +446,9 @@ function PdfSubmit() {
                 reference={profile!.customerReference}
               />
               <p>
-                Include a synthetic service-request PDF with your name,
+                Include a synthetic service-request document with your name,
                 reference, request type, date and explicit authorisation.
-                Supporting PDFs alone do not constitute a request.
+                Supporting documents alone do not constitute a request.
               </p>
             </div>
           </aside>

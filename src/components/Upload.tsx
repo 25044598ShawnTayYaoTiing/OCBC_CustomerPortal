@@ -27,29 +27,8 @@ export const size = (bytes: number) =>
   bytes >= 1024 * 1024
     ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
     : `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
-export async function validateFiles(files: File[], max = 10) {
-  if (!files.length || files.length > max)
-    return `Choose ${max === 1 ? "one PDF" : `1 to ${max} PDFs`}.`;
-  if (files.reduce((n, file) => n + file.size, 0) > 100 * 1024 * 1024)
-    return "Keep the combined file size under 100 MB.";
-  for (const file of files) {
-    if (
-      !file.name.toLowerCase().endsWith(".pdf") ||
-      file.name.length > 200 ||
-      file.size === 0 ||
-      file.size > 10 * 1024 * 1024
-    )
-      return `${file.name}: choose a nonempty PDF, up to 10 MB, with a filename under 200 characters.`;
-    if ((await file.slice(0, 5).text()) !== "%PDF-")
-      return `${file.name} is not a valid PDF file.`;
-  }
-  if (
-    new Set(files.map((f) => `${f.name}:${f.size}:${f.lastModified}`)).size !==
-    files.length
-  )
-    return "The same file is selected more than once. Remove the duplicate.";
-  return "";
-}
+export { validateFiles } from '../lib/upload-format.mjs';
+import { validateFiles } from '../lib/upload-format.mjs';
 
 function FilePreview({ file }: { file: File }) {
   const [open, setOpen] = useState(false);
@@ -102,14 +81,14 @@ function FilePreview({ file }: { file: File }) {
           </p>
           {url && (
             <>
-              <iframe title={`Selected PDF: ${file.name}`} src={url} />
+              {/\.(png|jpe?g)$/i.test(file.name) ? <img className="selected-image-preview" alt={`Selected document: ${file.name}`} src={url} /> : <iframe title={`Selected PDF: ${file.name}`} src={url} />}
               <a
                 className="text-button"
                 href={url}
                 target="_blank"
                 rel="noreferrer"
               >
-                Open PDF in a new tab
+                Open document in a new tab
               </a>
             </>
           )}
@@ -134,6 +113,7 @@ export function FilePicker({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const replaceIndex = useRef(0);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -165,19 +145,20 @@ export function FilePicker({
       if (problem) setError(problem);
       else setFiles(next);
     } catch {
-      setError("The replacement PDF could not be read. Choose it again.");
+      setError("The replacement document could not be read. Choose it again.");
     } finally {
       setChecking(false);
     }
   }
   return (
     <div className="file-picker">
+      <input ref={cameraInput} type="file" accept="image/jpeg,image/png" capture="environment" className="sr-only" aria-label="Take a document photo" disabled={disabled || checking} onChange={event => { void select(Array.from(event.target.files || [])); event.target.value = ''; }} />
       <input
         ref={replaceInput}
         type="file"
         className="sr-only"
-        aria-label="Choose replacement PDF"
-        accept=".pdf,application/pdf"
+        aria-label="Choose replacement document"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
         disabled={disabled || checking}
         onChange={(event) => {
           void replace(event.target.files?.[0]);
@@ -188,10 +169,10 @@ export function FilePicker({
         ref={input}
         type="file"
         className="sr-only"
-        accept=".pdf,application/pdf"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
         multiple={max > 1}
         disabled={disabled || checking}
-        aria-label={max === 1 ? "Choose corrected PDF" : "Choose PDF documents"}
+        aria-label={max === 1 ? "Choose corrected document" : "Choose documents or images"}
         onChange={(e) => {
           void select(Array.from(e.target.files || []));
           e.target.value = "";
@@ -216,11 +197,11 @@ export function FilePicker({
         <h3>
           {restoring
             ? "Reselect your original files"
-            : "Drag and drop your PDFs here"}
+            : "Upload a PDF, screenshot or clear photo of your document."}
         </h3>
         <p>
           {restoring
-            ? "Choose the exact same PDFs, in the same order, to confirm the earlier request."
+            ? "Choose the exact same files, in the same order, to confirm the earlier request."
             : `Or choose ${max === 1 ? "a file" : "files"} from your device.`}
         </p>
         <button
@@ -231,8 +212,10 @@ export function FilePicker({
         >
           {checking ? "Checking files…" : "Browse files"}
         </button>
+        <button type="button" className="button secondary" disabled={disabled || checking} onClick={() => cameraInput.current?.click()}>Take a photo</button>
+        <p>Keep all edges visible, avoid glare and check that every field is readable. Upload all pages in order.</p>
         <small>
-          PDF only · Up to 10 MB each{max > 1 ? ` · Maximum ${max} files` : ""}
+          PDF, JPG, JPEG, PNG · Up to 10 MB each{max > 1 ? ` · Maximum ${max} files` : ""}
         </small>
       </div>
       {error && <ErrorBox message={error} />}
@@ -309,12 +292,14 @@ export function FilePicker({
   );
 }
 
-export function useUpload(path: string, returnTo: string) {
+export function useUpload(path: string, returnTo: string, initialCombineImages = false) {
   const { profile } = useAuth();
   const id = profile!.id;
   const pending = useIntent(id);
   const { submissions, notifications } = useData();
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [combineImages, setCombineImages] = useState(pending?.combineImages ?? initialCombineImages);
   const [error, setError] = useState("");
   const submitting = useRef(false);
   const samePath = pending?.path === path;
@@ -323,6 +308,7 @@ export function useUpload(path: string, returnTo: string) {
     if (submitting.current) return null;
     submitting.current = true;
     setBusy(true);
+    setProgress(0);
     setError("");
     let intent = readIntent(id);
     try {
@@ -332,13 +318,14 @@ export function useUpload(path: string, returnTo: string) {
         );
       const message = await validateFiles(
         files,
-        path.endsWith("/replacement") ? 1 : 10,
+        path.endsWith("/replacement") && !combineImages ? 1 : 10,
       );
       if (message) throw new Error(message);
+      if (combineImages && (files.some(file => !/\.(png|jpe?g)$/i.test(file.name)) || files.reduce((n, file) => n + file.size, 0) > 12 * 1024 * 1024)) throw new Error('Pages of one form must all be JPG or PNG images, at most 12 MB combined.');
       const hashes = await fingerprint(files);
       if (intent && !sameFiles(intent.files, hashes))
         throw new Error(
-          "These files do not match the original request. Reselect the same PDFs in the same order.",
+          "These files do not match the original request. Reselect the same files in the same order.",
         );
       intent ??= {
         key: crypto.randomUUID(),
@@ -352,11 +339,17 @@ export function useUpload(path: string, returnTo: string) {
       saveIntent(intent, files);
       const body = new FormData();
       for (const file of files) body.append("files", file, file.name);
+      // Grouping is part of the retry intent and must remain unchanged after sending.
+      if (intent.combineImages !== undefined && intent.combineImages !== combineImages) throw new Error('Restore the original page grouping before retrying.');
+      intent.combineImages = combineImages;
+      saveIntent(intent, files);
+      body.append('combineImages', String(combineImages));
       const result = await api<Detail>(path, {
         method: "POST",
         headers: { "Idempotency-Key": intent.key },
         body,
         timeout: 600000,
+        onUploadProgress: setProgress,
       });
       if (
         !result.submission?.id ||
@@ -394,7 +387,8 @@ export function useUpload(path: string, returnTo: string) {
       setBusy(false);
     }
   }
-  return { submit, busy, error, pending, samePath, initialFiles };
+  useEffect(() => { if (pending?.combineImages !== undefined) setCombineImages(pending.combineImages); }, [pending]);
+  return { submit, busy, progress, combineImages, setCombineImages, error, pending, samePath, initialFiles };
 }
 
 export function UploadFeedback({
@@ -404,11 +398,13 @@ export function UploadFeedback({
 }) {
   return (
     <>
+      {!uploader.busy && <ImagePageOption checked={uploader.combineImages} disabled={!!uploader.pending} onChange={uploader.setCombineImages} />}
       {uploader.busy && (
         <div className="processing-notice" role="status">
           <LoaderCircle className="spin" size={22} />
           <div>
-            <strong>Submitting and checking your documents</strong>
+            <strong>{uploader.progress < 100 ? `Uploading documents: ${uploader.progress}%` : 'Upload complete. Checking your documents...'}</strong>
+            <progress aria-label="Document upload progress" value={uploader.progress} max={100} />
             <p>
               This can take several minutes. Keep this tab open. We’ll confirm
               the result when the service responds.
@@ -429,4 +425,8 @@ export function UploadFeedback({
       )}
     </>
   );
+}
+
+export function ImagePageOption({ checked, disabled = false, onChange }: { checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
+  return <label className="checkbox-label"><input type="checkbox" checked={checked} disabled={disabled} onChange={event => onChange(event.target.checked)} /><span>These images are ordered pages of one form (JPG/PNG only, 12 MB combined). Leave unchecked for separate documents.</span></label>;
 }

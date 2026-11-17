@@ -15,7 +15,8 @@ export function sameFiles(original, selected) {
 export function validIntent(value, customerId, apiBase) {
   return !!value && value.customerId === customerId && value.apiBase === apiBase
     && typeof value.key === 'string' && /^[\w-]{8,100}$/.test(value.key)
-    && typeof value.path === 'string' && /^\/submissions(?:\/[\w-]+\/documents(?:\/[\w-]+\/replacement)?)?$/.test(value.path)
+    && (value.combineImages === undefined || typeof value.combineImages === 'boolean')
+    && typeof value.path === 'string' && /^\/submissions(?:\/[\w-]+\/documents(?:\/[\w-]+\/replacement)?)?(?:\?requestType=(?:ADDRESS_CHANGE|RESIDENTIAL_ADDRESS_CHANGE|ADDITIONAL_ACCOUNT|CONTACT_UPDATE|TAX_RESIDENCY_UPDATE))?$/.test(value.path)
     && typeof value.returnTo === 'string' && /^\/(?:submit|submissions\/[\w-]+)$/.test(value.returnTo)
     && Array.isArray(value.files) && value.files.length > 0 && value.files.length <= 10
     && value.files.every((/** @type {any} */ f) => f && typeof f.name === 'string' && f.name.length <= 200

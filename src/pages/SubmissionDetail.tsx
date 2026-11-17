@@ -86,7 +86,7 @@ function CorrectionDialog({
         <div>
           <p className="eyebrow">YOUR EXISTING APPLICATION</p>
           <h2 id="upload-dialog-title">
-            {target.add ? "Add missing documents" : "Upload a corrected PDF"}
+            {target.add ? "Add missing documents" : "Upload a corrected document"}
           </h2>
         </div>
         <button
@@ -134,7 +134,7 @@ function CorrectionDialog({
         <FilePicker
           files={files}
           setFiles={setFiles}
-          max={target.add ? 10 : 1}
+          max={target.add || uploader.combineImages ? 10 : 1}
           disabled={uploader.busy}
           restoring={uploader.samePath}
         />
@@ -425,7 +425,7 @@ export function SubmissionDetail() {
                   <p>
                     {document.captureMethod === "DIGITAL_EFORM"
                       ? "Your submitted declaration"
-                      : "Supporting PDF"}
+                      : "Supporting document"}
                   </p>
                 </div>
                 {!locked && document.captureMethod !== "DIGITAL_EFORM" && (
@@ -433,7 +433,7 @@ export function SubmissionDetail() {
                     className="text-button"
                     onClick={() => setTarget({ document })}
                   >
-                    Replace PDF
+                    Replace document
                   </button>
                 )}
               </li>

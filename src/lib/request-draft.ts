@@ -1,5 +1,6 @@
 ﻿import type { DigitalValues } from "../types";
 export interface RequestDraft {
+  combineImages?: boolean;
   values: DigitalValues;
   files: File[];
   addressReady: boolean;
@@ -12,6 +13,7 @@ export const saveDraft = (key: string, draft: RequestDraft) =>
   drafts.set(key, draft);
 export const clearDraft = (key: string) => drafts.delete(key);
 export interface PdfDraft {
+  combineImages?: boolean;
   requestType: string;
   files: File[];
   step: number;

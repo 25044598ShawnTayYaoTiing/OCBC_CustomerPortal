@@ -30,7 +30,7 @@ function errorMessage(status: number, code: string, message: string) {
     : 'Your session has ended. Sign in again to continue.';
   if (status === 403) return 'This portal does not have access to that request. Check the configured portal origin or contact your demo administrator.';
   if (status === 404) return 'This submission or document is not available to your account.';
-  if (status === 413) return 'This upload is too large. Each PDF must be 10 MB or smaller, with no more than 10 files.';
+  if (status === 413) return 'This upload is too large. Each file must be 10 MB or smaller, with no more than 10 files.';
   if (status === 429) return 'Too many requests. Please wait a moment before trying again.';
   if (status === 426) return 'A secure HTTPS API connection is required. Contact your demo administrator.';
   if (status >= 500) return 'Document processing is temporarily unavailable. The result of an upload may be uncertain; check your submissions or retry the same request.';
@@ -39,9 +39,9 @@ function errorMessage(status: number, code: string, message: string) {
   return message || 'The request could not be completed. Please try again.';
 }
 
-export async function api<T>(path: string, options: RequestInit & { timeout?: number; anonymous?: boolean } = {}): Promise<T> {
+export async function api<T>(path: string, options: RequestInit & { timeout?: number; anonymous?: boolean; onUploadProgress?: (value: number) => void } = {}): Promise<T> {
   if (configurationError) throw new ApiError(0, configurationError);
-  const { timeout = 30000, anonymous = false, signal, ...init } = options;
+  const { timeout = 30000, anonymous = false, signal, onUploadProgress, ...init } = options;
   if (!anonymous && (!session || Date.parse(session.expiresAt) <= Date.now())) {
     expireSession(); throw new ApiError(401, 'Your session has ended. Sign in again to continue.');
   }
@@ -54,7 +54,21 @@ export async function api<T>(path: string, options: RequestInit & { timeout?: nu
   try {
     const headers = new Headers(init.headers);
     if (!anonymous && session) headers.set('Authorization', `Bearer ${session.accessToken}`);
-    const response = await fetch(API_BASE + path, { ...init, headers, signal: controller.signal, credentials: 'omit', cache: 'no-store' });
+    const response = onUploadProgress && init.body instanceof FormData
+      ? await new Promise<Response>((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          const abort = () => request.abort();
+          const cleanup = () => controller.signal.removeEventListener('abort', abort);
+          request.open(init.method || 'POST', API_BASE + path);
+          headers.forEach((value, key) => request.setRequestHeader(key, value));
+          request.upload.onprogress = event => { if (event.lengthComputable) onUploadProgress(Math.round(event.loaded / event.total * 100)); };
+          request.onload = () => { cleanup(); resolve(new Response(request.responseText, { status: request.status, headers: { 'Content-Type': 'application/json' } })); };
+          request.onerror = request.onabort = () => { cleanup(); reject(new Error('Upload connection interrupted')); };
+          controller.signal.addEventListener('abort', abort, { once: true });
+          if (controller.signal.aborted) { cleanup(); reject(new Error('Upload cancelled')); return; }
+          request.send(init.body as FormData);
+        })
+      : await fetch(API_BASE + path, { ...init, headers, signal: controller.signal, credentials: 'omit', cache: 'no-store' });
     const data = response.status === 204 ? null : await response.json().catch(() => null);
     if (!response.ok) {
       if (response.status === 401 && !anonymous) expireSession();
