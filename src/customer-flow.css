@@ -1,0 +1,220 @@
+﻿.form-progress {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.form-progress li {
+  min-width: 0;
+}
+.form-progress li .text-button {
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.form-progress li[aria-current="step"] {
+  color: var(--accent);
+}
+.form-progress li[aria-current="step"] .text-button:disabled {
+  opacity: 1;
+  color: var(--text-primary);
+}
+.document-requirements {
+  padding: 18px;
+  background: var(--bg-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+.document-requirements h3 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.document-requirements p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 8px 0;
+}
+.document-requirements small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+.selected-file-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.file-list li {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.file-list li > div:first-of-type {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.file-list strong {
+  overflow-wrap: anywhere;
+}
+.file-list .text-button {
+  min-height: 40px;
+}
+.file-preview-dialog {
+  width: min(960px, 94vw);
+}
+.file-preview-dialog iframe {
+  display: block;
+  width: 100%;
+  height: 65vh;
+  border: 0;
+  background: var(--bg-subtle);
+}
+.file-preview-dialog > .text-button {
+  display: inline-block;
+  margin: 16px 24px;
+}
+.cancellation-dialog {
+  max-width: 560px;
+}
+.cancellation-dialog p {
+  line-height: 1.7;
+}
+.button.danger {
+  color: #fff;
+  background: #b4232c;
+  border: 1px solid #b4232c;
+}
+.button.danger:hover {
+  background: #921d24;
+}
+.cancel-request {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+.cancel-request-button {
+  color: var(--danger-text, #b4232c);
+  min-height: 40px;
+}
+.cancel-request small,
+.cancellation-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+.request-history-card {
+  border-bottom: 1px solid var(--border);
+}
+.request-history-card .request-portfolio-row {
+  border: 0;
+}
+.request-history-card footer {
+  padding: 0 24px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.history-reference {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.status-cancelled {
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+}
+.eform-layout .form-actions {
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.processing-notice progress {
+  min-width: 70px;
+  max-width: 160px;
+}
+@media (max-width: 760px) {
+  .form-progress {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .form-progress li {
+    padding: 12px;
+  }
+  .form-progress li .text-button {
+    font-size: 13px;
+  }
+  .request-history-card footer {
+    padding: 0 16px 16px;
+    align-items: flex-start;
+  }
+  .request-history-card .request-portfolio-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+  .request-history-card .portfolio-status {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+  .document-requirements {
+    padding: 15px;
+  }
+  .file-list li > .selected-file-actions {
+    width: 100%;
+  }
+  .file-list li > .icon-button {
+    margin-left: auto;
+  }
+  .file-preview-dialog iframe {
+    height: 55vh;
+  }
+  .cancellation-dialog .dialog-actions {
+    flex-wrap: wrap;
+  }
+  .form-actions > .button {
+    min-height: 44px;
+  }
+}
+.file-picker {
+  position: relative;
+  min-width: 0;
+}
+.file-picker input.sr-only[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  left: 0;
+  top: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+.form-progress li[aria-current="step"] {
+  background: var(--accent-soft, #fff1f2);
+  border-color: var(--accent-border, #f2c4c7);
+  color: var(--accent);
+}
+.eform-layout.creation-step-2,
+.eform-layout.creation-step-3 {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 940px;
+  margin-inline: auto;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .file-list li > .selected-file-actions {
+    flex: 0 0 100%;
+    justify-content: flex-start;
+    gap: 20px;
+  }
+  .file-list .icon-button {
+    min-width: 42px;
+    min-height: 42px;
+  }
+}

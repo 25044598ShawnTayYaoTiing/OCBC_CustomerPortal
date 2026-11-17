@@ -1,4 +1,4 @@
-import { AddressFields } from '../components/AddressFields';
+import { AddressFields } from "../components/AddressFields";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -10,10 +10,13 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useAuth } from "../auth";
 import { useData } from "../data";
 import { useIntent } from "../lib/upload-intent";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { serviceLabel, serviceRequests } from "../lib/service-requests";
 import type { Detail, DigitalValues } from "../types";
 import { ErrorBox, Loading, Notice, PageHeader, Panel } from "../components/ui";
+import { FilePicker, validateFiles } from "../components/Upload";
+import { DocumentRequirements } from "../components/DocumentRequirements";
+import { readDraft, saveDraft, clearDraft } from "../lib/request-draft";
 import { LegacyDigitalForm } from "./LegacyDigitalForm";
 
 const today = () =>
@@ -26,46 +29,81 @@ const today = () =>
 
 export function DigitalForm() {
   const { id } = useParams();
-  const [query] = useSearchParams();
-  const [stage, setStage] = useState(id ? 1 : 0);
+  const [query, setQuery] = useSearchParams();
+  const requestedStage = Number(query.get("step") || (id ? 1 : 0));
+  const stage =
+    Number.isInteger(requestedStage) &&
+    requestedStage >= 0 &&
+    requestedStage <= 3
+      ? requestedStage
+      : 0;
+  function setStage(step: number) {
+    setError("");
+    setQuery((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set("step", String(step));
+      return next;
+    });
+  }
+  const review = stage === 3;
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { submissions, notifications } = useData();
   const p = profile?.bankingProfile;
   const pending = useIntent(profile!.id);
+  const draftKey = `${profile!.id}:${id || "new"}`;
+  const draft = readDraft(draftKey);
+  const [files, setFiles] = useState<File[]>(() => draft?.files || []);
+  const [existingSupport, setExistingSupport] = useState(false);
+  const submitting = useRef(false);
 
-  const [values, setValues] = useState<DigitalValues>(() => ({
-    requestType: serviceRequests
-      .map((request) => request.value)
-      .includes(query.get("requestType") || "")
-      ? query.get("requestType")!
-      : "ADDRESS_CHANGE",
-    accountType: p?.accountType || "SAVINGS",
-    currency: p?.currency || "SGD",
-    mailingAddress:
-      query.get("requestType") === "RESIDENTIAL_ADDRESS_CHANGE"
-        ? p?.residentialAddress || ""
-        : p?.mailingAddress || "",
-    email: p?.email || "",
-    mobile: p?.mobile || "",
-    occupation: "",
-    taxResidency: p?.taxResidency || "Singapore",
-    foreignTaxCountry: "",
-    taxIdentifier: "",
-    declarationDate: today(),
-    taxDeclaration: false,
-    authorisation: false,
-  }));
+  const [values, setValues] = useState<DigitalValues>(
+    () =>
+      draft?.values || {
+        requestType: serviceRequests
+          .map((request) => request.value)
+          .includes(query.get("requestType") || "")
+          ? query.get("requestType")!
+          : "ADDRESS_CHANGE",
+        accountType: p?.accountType || "SAVINGS",
+        currency: p?.currency || "SGD",
+        mailingAddress:
+          query.get("requestType") === "RESIDENTIAL_ADDRESS_CHANGE"
+            ? p?.residentialAddress || ""
+            : p?.mailingAddress || "",
+        email: p?.email || "",
+        mobile: p?.mobile || "",
+        occupation: "",
+        taxResidency: p?.taxResidency || "Singapore",
+        foreignTaxCountry: "",
+        taxIdentifier: "",
+        declarationDate: today(),
+        taxDeclaration: false,
+        authorisation: false,
+      },
+  );
 
-  const [addressReady, setAddressReady] = useState(!!id);
-  const [review, setReview] = useState(false);
+  const [addressReady, setAddressReady] = useState(draft?.addressReady ?? !!id);
   const [loading, setLoading] = useState(!!id);
   const [loaded, setLoaded] = useState(!id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
-  const [retry, setRetry] = useState(false);
-  const intent = useRef<{ key: string; body: string } | null>(null);
+  const [retry, setRetry] = useState(draft?.retry || false);
+  const intent = useRef<{
+    key: string;
+    body: string;
+    multipart: boolean;
+  } | null>(draft?.intent || null);
+  useEffect(() => {
+    saveDraft(draftKey, {
+      values,
+      files,
+      addressReady,
+      retry,
+      intent: intent.current,
+    });
+  }, [draftKey, values, files, addressReady, retry]);
 
   useEffect(() => {
     if (!id) return;
@@ -82,11 +120,18 @@ export function DigitalForm() {
       .then(([form, detail]) => {
         if (!controller.signal.aborted) {
           setValues({
-            ...form.values,
+            ...(draft?.values || form.values),
             authorisation: false,
             expectedRevision: detail.submission.revision,
           });
-          setLocked(detail.submission.status === "OPERATIONS");
+          setLocked(
+            ["OPERATIONS", "CANCELLED"].includes(detail.submission.status),
+          );
+          setExistingSupport(
+            detail.documents.some(
+              (document) => document.type === "SUPPORTING_DOCUMENT",
+            ),
+          );
           setLoaded(true);
         }
       })
@@ -115,12 +160,56 @@ export function DigitalForm() {
   const tax = values.requestType === "TAX_RESIDENCY_UPDATE";
   const foreign = tax && values.taxResidency !== "Singapore";
 
+  const supportRequired = address || foreign;
+  function detailsError() {
+    if (!values.authorisation)
+      return "Confirm your authorisation before continuing.";
+    if (address && (!addressReady || !values.mailingAddress.trim()))
+      return "Find your new address or enter it for manual review.";
+    if (
+      tax &&
+      (!values.taxDeclaration ||
+        (foreign &&
+          (!values.foreignTaxCountry.trim() || !values.taxIdentifier.trim())))
+    )
+      return "Complete your tax declaration, jurisdictions and TIN.";
+    if (
+      additionalAccount &&
+      values.accountType === "CURRENT" &&
+      !values.sourceOfFunds?.trim()
+    )
+      return "Provide a source-of-funds description for this current-account request.";
+    if (contact && values.email === p?.email && values.mobile === p?.mobile)
+      return "Change your email, phone number, or both before continuing.";
+    return "";
+  }
   async function submit() {
+    if (submitting.current || locked) return;
+    const validation = retry ? "" : detailsError();
+    if (validation) {
+      setError(validation);
+      return;
+    }
+    if (!retry && supportRequired && !existingSupport && !files.length) {
+      setError("Add the required supporting PDF before submitting.");
+      setStage(2);
+      return;
+    }
+    if (files.length) {
+      const problem = await validateFiles(files);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     if (!intent.current) {
       intent.current = {
         key: crypto.randomUUID(),
+        multipart: files.length > 0,
         body: JSON.stringify({
           ...values,
           accountType: additionalAccount ? values.accountType : null,
@@ -136,20 +225,51 @@ export function DigitalForm() {
         }),
       };
     }
+    saveDraft(draftKey, {
+      values,
+      files,
+      addressReady,
+      retry: true,
+      intent: intent.current,
+    });
     try {
+      const multipart = new FormData();
+      if (intent.current.multipart) {
+        multipart.append(
+          "form",
+          new Blob([intent.current.body], { type: "application/json" }),
+        );
+        files.forEach((file) => multipart.append("files", file, file.name));
+      }
       const result = await api<Detail>(
-        id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms",
+        (id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms") +
+          (intent.current.multipart ? "/with-documents" : ""),
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            ...(intent.current.multipart
+              ? {}
+              : { "Content-Type": "application/json" }),
             "Idempotency-Key": intent.current.key,
           },
-          body: intent.current.body,
+          body: intent.current.multipart ? multipart : intent.current.body,
           timeout: 600000,
         },
       );
+      if (
+        !result?.submission?.id ||
+        !Array.isArray(result.documents) ||
+        !Array.isArray(result.corrections)
+      ) {
+        throw new ApiError(
+          502,
+          "The submission response could not be confirmed. Retry this original request safely or check My requests.",
+          "",
+          true,
+        );
+      }
       intent.current = null;
+      clearDraft(draftKey);
       void submissions.refresh();
       void notifications.refresh();
       navigate(`/submissions/${result.submission.id}`);
@@ -168,6 +288,7 @@ export function DigitalForm() {
         e instanceof Error ? e.message : "Unable to confirm this request.",
       );
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -204,9 +325,17 @@ export function DigitalForm() {
   return (
     <div className="page-stack">
       <div>
-        <Link className="text-link" to={id ? `/submissions/${id}` : "/submit"}>
-          <ArrowLeft size={15} /> Back
-        </Link>
+        <button
+          type="button"
+          className="text-button"
+          disabled={busy || retry}
+          onClick={() =>
+            stage > 0 ? setStage(stage - 1) : navigate("/submit")
+          }
+        >
+          <ArrowLeft size={15} />
+          Back{stage > 0 ? " to previous step" : " to request options"}
+        </button>
       </div>
       <PageHeader
         eyebrow="Guided Digital Request"
@@ -219,31 +348,48 @@ export function DigitalForm() {
       />
 
       <ol className="form-progress" aria-label="Request progress">
-        <li aria-current={stage === 0 ? "step" : undefined}>
-          <span>{stage > 0 || review ? <Check size={14} /> : "01"}</span>
-          <strong>Choose service</strong>
-        </li>
-        <li aria-current={!review && stage === 1 ? "step" : undefined}>
-          <span>{review ? <Check size={14} /> : "02"}</span>
-          <strong>Your changes</strong>
-        </li>
-        <li aria-current={review ? "step" : undefined}>
-          <span>03</span>
-          <strong>Review &amp; send</strong>
-        </li>
+        {[
+          "Choose service",
+          "Your changes",
+          "Supporting documents",
+          "Review & send",
+        ].map((name, index) => (
+          <li key={name} aria-current={stage === index ? "step" : undefined}>
+            <span>{stage > index ? <Check size={14} /> : `0${index + 1}`}</span>
+            <button
+              type="button"
+              className="text-button"
+              disabled={index >= stage || busy || retry}
+              onClick={() => setStage(index)}
+            >
+              {name}
+            </button>
+          </li>
+        ))}
       </ol>
 
       <form
-        className="eform-layout"
+        className={`eform-layout creation-step-${stage}`}
         onSubmit={(e) => {
           e.preventDefault();
-          if (stage === 0 && !retry) {
-            setStage(1);
-            return;
-          }
-          if (!review && !retry) {
-            if (address && !addressReady) { setError("Find your new address or enter it for manual review."); return; }
-            setReview(true);
+          if (!retry && stage < 3) {
+            if (stage === 1) {
+              const problem = detailsError();
+              if (problem) {
+                setError(problem);
+                return;
+              }
+            }
+            if (
+              stage === 2 &&
+              supportRequired &&
+              !existingSupport &&
+              !files.length
+            ) {
+              setError("Add a supporting PDF matching the requirements below.");
+              return;
+            }
+            setStage(stage + 1);
             return;
           }
           void submit();
@@ -262,7 +408,10 @@ export function DigitalForm() {
                     aria-label="Request type"
                     value={values.requestType}
                     disabled={!!id}
-                    onChange={(e) => { update("requestType", e.target.value); setAddressReady(false); }}
+                    onChange={(e) => {
+                      update("requestType", e.target.value);
+                      setAddressReady(false);
+                    }}
                   >
                     {serviceRequests.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -276,8 +425,8 @@ export function DigitalForm() {
           </div>
 
           <fieldset
-            hidden={review || stage === 0}
-            disabled={busy || locked || retry || review || stage === 0}
+            hidden={stage !== 1}
+            disabled={busy || locked || retry || stage !== 1}
             className="eform-fieldset"
           >
             {address && (
@@ -289,7 +438,13 @@ export function DigitalForm() {
                 }
                 description="Find your new building address, then add your unit number if applicable."
               >
-                <AddressFields key={values.requestType} existing={!!id} value={values.mailingAddress} onChange={value => update('mailingAddress',value)} onReady={setAddressReady}/>
+                <AddressFields
+                  key={values.requestType}
+                  existing={!!id || addressReady}
+                  value={values.mailingAddress}
+                  onChange={(value) => update("mailingAddress", value)}
+                  onReady={setAddressReady}
+                />
               </Panel>
             )}
 
@@ -365,8 +520,7 @@ export function DigitalForm() {
                     After submission, verify an email OTP. A changed email is
                     verified at the new address; a phone-only change uses your
                     registered email to authorise the request. New phone
-                    ownership still requires independent staff
-                    verification.
+                    ownership still requires independent staff verification.
                   </Notice>
                 </div>
               </Panel>
@@ -437,7 +591,10 @@ export function DigitalForm() {
 
             <Panel title="Customer declaration and authorisation">
               <div className="eform-fields">
-                <p className="full-width">The declaration time is recorded automatically when you submit.</p>
+                <p className="full-width">
+                  The declaration time is recorded automatically when you
+                  submit.
+                </p>
                 <label className="checkbox-label full-width">
                   <input
                     type="checkbox"
@@ -456,6 +613,37 @@ export function DigitalForm() {
             </Panel>
           </fieldset>
 
+          {stage === 2 && (
+            <Panel
+              title="Supporting documents"
+              description="Prepare your evidence before sending the request."
+            >
+              <div className="form-body">
+                <DocumentRequirements
+                  requestType={values.requestType}
+                  foreign={foreign}
+                  reference={profile!.customerReference}
+                />
+                {existingSupport && (
+                  <Notice>
+                    A supporting PDF is already saved with this request. You can
+                    add further evidence here or replace the saved PDF from My
+                    requests.
+                  </Notice>
+                )}
+                <FilePicker
+                  files={files}
+                  setFiles={setFiles}
+                  disabled={busy || retry || locked}
+                />
+                <p className="field-hint">
+                  Selected files stay in this signed-in session when you go
+                  Back. They are uploaded with your declaration when you submit.
+                  You can preview, replace or remove them first.
+                </p>
+              </div>
+            </Panel>
+          )}
           {review && (
             <Panel
               title="Review your service request"
@@ -470,10 +658,23 @@ export function DigitalForm() {
                   <dt>Customer reference</dt>
                   <dd className="mono">{profile!.customerReference}</dd>
                 </div>
-                {address && <div><dt>Current address on your profile</dt><dd>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? p.residentialAddress : p.mailingAddress}</dd></div>}
                 {address && (
                   <div>
-                    <dt>{values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" ? "New residential address" : "New mailing address"}</dt>
+                    <dt>Current address on your profile</dt>
+                    <dd>
+                      {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
+                        ? p.residentialAddress
+                        : p.mailingAddress}
+                    </dd>
+                  </div>
+                )}
+                {address && (
+                  <div>
+                    <dt>
+                      {values.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
+                        ? "New residential address"
+                        : "New mailing address"}
+                    </dt>
                     <dd>{values.mailingAddress}</dd>
                   </div>
                 )}
@@ -538,12 +739,28 @@ export function DigitalForm() {
                   </dd>
                 </div>
               </dl>
+              <div className="form-body">
+                <h3>Supporting documents</h3>
+                {files.length ? (
+                  <FilePicker files={files} setFiles={setFiles} disabled />
+                ) : (
+                  <p>
+                    {existingSupport
+                      ? "Using the supporting documents already saved with this request."
+                      : "No supporting PDF selected for this service."}
+                  </p>
+                )}
+                <p>
+                  Files and your declaration are sent together. Validation and
+                  staff approval still apply.
+                </p>
+              </div>
               <div className="form-actions">
                 <button
                   type="button"
                   className="button secondary"
                   disabled={busy || retry}
-                  onClick={() => setReview(false)}
+                  onClick={() => setStage(1)}
                 >
                   Edit details
                 </button>
@@ -551,6 +768,23 @@ export function DigitalForm() {
             </Panel>
           )}
 
+          {locked && (
+            <Notice>
+              This request is closed to changes. Return to My requests to view
+              its recorded status.
+            </Notice>
+          )}
+          {busy && (
+            <div className="processing-notice" role="status">
+              <progress aria-label="Submitting request" />
+              <p>
+                Uploading your declaration
+                {files.length ? ` and ${files.length} supporting PDF(s)` : ""},
+                then checking the package. Keep this tab open. Your request is
+                confirmed only when the server responds.
+              </p>
+            </div>
+          )}
           {error && <ErrorBox message={error} />}
           {retry && (
             <Notice>
@@ -565,14 +799,15 @@ export function DigitalForm() {
               style={{ borderTop: 0, borderRadius: "var(--radius-lg)" }}
             >
               <div className="step-back-actions">
-                {stage === 1 && !review && (
+                {stage > 0 && (
                   <button
                     type="button"
                     className="button secondary"
-                    disabled={busy || retry || !!id}
-                    onClick={() => setStage(0)}
+                    disabled={busy || retry}
+                    onClick={() => setStage(stage - 1)}
                   >
-                    Change service
+                    <ArrowLeft size={16} />
+                    Back
                   </button>
                 )}
                 <Link className="text-link" to="/submissions">
@@ -584,7 +819,9 @@ export function DigitalForm() {
                 disabled={
                   busy ||
                   locked ||
-                  (!retry && stage !== 0 && (!values.authorisation || (address && !addressReady)))
+                  (!retry &&
+                    stage !== 0 &&
+                    (!values.authorisation || (address && !addressReady)))
                 }
               >
                 {busy
@@ -593,18 +830,34 @@ export function DigitalForm() {
                     ? "Retry original request"
                     : stage === 0
                       ? "Continue to your changes"
-                      : !review
-                        ? "Review request"
-                        : id
-                          ? "Submit correction"
-                          : "Submit service request"}
+                      : stage === 1
+                        ? "Continue to documents"
+                        : !review
+                          ? "Continue to review"
+                          : id
+                            ? "Submit correction"
+                            : "Submit service request"}
                 <ArrowRight size={16} />
               </button>
             </div>
           </div>
         </div>
 
-        <aside className="submission-aside"><div className="aside-card"><h2>What happens next</h2><p>We check your request and any documents. If something needs updating, you will see one clear action in My requests.</p>{address && <p>You will need one supporting PDF showing the new address and your customer reference.</p>}<p>Your request is sent for processing only after the required checks and approval.</p></div></aside>
+        {stage < 2 && (
+          <aside className="submission-aside">
+            <div className="aside-card">
+              <DocumentRequirements
+                requestType={values.requestType}
+                foreign={foreign}
+                reference={profile!.customerReference}
+              />
+              <p>
+                Your request is sent for processing only after required checks
+                and approval.
+              </p>
+            </div>
+          </aside>
+        )}
       </form>
     </div>
   );

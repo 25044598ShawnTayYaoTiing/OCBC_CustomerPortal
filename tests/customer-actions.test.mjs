@@ -15,3 +15,8 @@ test('existing supporting evidence retains its mismatch correction',()=>{
 test('Operations is described as processing rather than completed',()=>{
  assert.match(requestNextStep('OPERATIONS',0),/sent for processing/);assert.doesNotMatch(requestNextStep('OPERATIONS',0),/completed/i);
 });
+
+test('cancelled requests do not offer historical correction actions',()=>{
+ assert.deepEqual(customerActions({...detail,submission:{...detail.submission,status:'CANCELLED'}}),[]);
+ assert.match(requestNextStep('CANCELLED',3),/cancelled.*No further processing/);
+});
