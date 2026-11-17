@@ -416,7 +416,17 @@ export function DigitalForm() {
                     value={values.requestType}
                     disabled={!!id}
                     onChange={(e) => {
-                      update("requestType", e.target.value);
+                      const nextType = e.target.value;
+                      setValues((v) => ({
+                        ...v,
+                        requestType: nextType,
+                        mailingAddress:
+                          nextType === "RESIDENTIAL_ADDRESS_CHANGE"
+                            ? p?.residentialAddress || ""
+                            : nextType === "ADDRESS_CHANGE"
+                              ? p?.mailingAddress || ""
+                              : v.mailingAddress,
+                      }));
                       setAddressReady(false);
                     }}
                   >
@@ -853,6 +863,46 @@ export function DigitalForm() {
 
         {stage < 2 && (
           <aside className="submission-aside">
+            <div className="aside-card">
+              <h3 style={{ fontSize: 15 }}>Existing customer profile</h3>
+              <dl className="data-list">
+                <div>
+                  <dt>Customer</dt>
+                  <dd>{profile!.name}</dd>
+                </div>
+                <div>
+                  <dt>Customer reference</dt>
+                  <dd className="mono">{profile!.customerReference}</dd>
+                </div>
+                <div>
+                  <dt>Synthetic identity</dt>
+                  <dd className="mono">{p.identityNumber}</dd>
+                </div>
+                <div>
+                  <dt>Current residential address</dt>
+                  <dd>{p.residentialAddress}</dd>
+                </div>
+                <div>
+                  <dt>Current mailing address</dt>
+                  <dd>
+                    {p.mailingAddress}
+                    {p.postalCode ? ` (${p.postalCode})` : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Registered contact</dt>
+                  <dd>
+                    {p.email}
+                    <br />
+                    {p.mobile}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Current tax residency</dt>
+                  <dd>{p.taxResidency}</dd>
+                </div>
+              </dl>
+            </div>
             <div className="aside-card">
               <DocumentRequirements
                 requestType={values.requestType}

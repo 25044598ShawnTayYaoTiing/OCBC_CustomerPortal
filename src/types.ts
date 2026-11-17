@@ -79,6 +79,9 @@ export interface Notification {
 }
 
 export interface BankingProfile {
+  dateOfBirth?: string | null;
+  postalCode?: string | null;
+  existingAccountReference?: string | null;
   identityNumber: string;
   residentialAddress: string;
   mailingAddress: string;
@@ -97,6 +100,8 @@ export interface DigitalValues {
   accountType: string;
   currency: string;
   mailingAddress: string;
+  residentialAddress?: string;
+  postalCode?: string;
   email: string;
   mobile: string;
   occupation: string;
