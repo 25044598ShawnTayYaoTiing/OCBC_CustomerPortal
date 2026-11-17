@@ -75,3 +75,70 @@ This release qualifies the tested synthetic mailing-address journey. It is not
 an exhaustive device/accessibility audit or qualification of every banking service,
 100-account credential migration, email/SMS delivery, real banking fulfilment or
 provider reliability. No bulk account/password reset was performed.
+
+## Final readiness verification - 17 November 2026
+
+The final deployed application release is `a559557e99b0dc469adcc017d18f0c9c0236a8b0` and
+the final Customer Portal code release is `3895d0d`. Backend CI and the AWS
+deployment passed; the Vercel check for the portal release passed. The portal
+change corrected two malformed customer instructions in the address request
+form. A final RM dashboard review found that earlier Gemini recommendations
+could still read like current correction instructions after the case advanced.
+The dashboard now labels investigation history and explicitly marks revision
+mismatches. Its production build and CI passed, the AWS deploy completed, and the
+live dashboard bundle includes the new wording. The browser access host was
+unavailable for a fresh interactive check of this last copy change. The earlier
+production Chrome checks found no portal page errors or failed requests, and
+live address search and selection worked at desktop and mobile widths.
+
+AWS was missing the SMTP variables in its active Compose files even though its
+private `.env` already contained enabled Brevo settings. The AWS backend Compose
+overlay now passes those settings, and CI checks that they remain present. The
+host Compose file was updated with a private rollback copy. The backend was
+recreated by the normal deployment with its existing configuration values; no
+database reset or S3 change was made. All application containers are healthy with
+zero restarts, and the backend reports the deployed release above.
+
+From EC2, SMTP DNS resolution, STARTTLS and authentication passed. One synthetic
+missing-document correction was sent to the previously authorized test mailbox;
+the RDS email outbox recorded `SENT` after one attempt. The verified customer
+profiles and sent outbox records were checked to ensure that the only verified
+test destination was the authorized mailbox and no email was sent elsewhere.
+Inbox receipt was not independently checked, so `SENT` confirms SMTP submission
+acceptance rather than final inbox delivery.
+
+That same synthetic request then accepted a supporting PDF, completed Gemini
+extraction and Spring Boot validation with no blocking findings, displayed
+verified live OneMap evidence in Resolution Management, and was approved to
+`OPERATIONS`. The customer saw `Sent for processing`. The earlier verified case
+also remains in Operations. Operations is a processing handover; it does not mean
+that a bank employee completed the address change or updated a production
+customer profile.
+
+Both `ONEMAP_MAILING` and `ONEMAP_RESIDENTIAL` remain `DRAFT`. Gemini HTTP 503 was
+not observed in the checked logs, and the focused PDF extraction succeeded; this
+does not establish general Gemini availability. One first upload attempt in the
+final browser run returned HTTP 422; a clean retry with the same synthetic PDF
+succeeded and the full journey completed. The 422 did not recur. The final test
+also updated one synthetic profile to the authorized test mailbox through the
+audited Resolution Management endpoint.
+
+### Suggested five-minute demo
+
+1. **Customer view (45 seconds):** sign in, show the request overview and open a
+   new mailing-address request.
+2. **Live address selection (60 seconds):** enter `200640`, select the live
+   OneMap candidate, explain that this checks the building address only, and
+   submit the digitally declared request.
+3. **Correction (60 seconds):** show the single supporting-PDF action and the
+   correction email status for the authorized test mailbox.
+4. **Automated review (90 seconds):** upload the synthetic proof PDF; in
+   Resolution Management, show Gemini extraction, Spring checks, OneMap evidence
+   and the absence of blocking findings.
+5. **Handover (45 seconds):** approve for Operations, then show the customer
+   status `Sent for processing`; state clearly that this is a handover, not
+   completed banking fulfilment.
+
+The tested workflow is suitable for a controlled synthetic hackathon demo. The
+remaining evidence limits are final inbox receipt, broader email/provider
+reliability, and exhaustive accessibility or production qualification.
