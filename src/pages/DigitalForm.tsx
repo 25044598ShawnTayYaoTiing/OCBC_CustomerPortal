@@ -442,6 +442,9 @@ export function DigitalForm() {
                       setAddressReady(false);
                     }}
                   >
+                    {id && values.requestType === "RESIDENTIAL_ADDRESS_CHANGE" && (
+                      <option value="RESIDENTIAL_ADDRESS_CHANGE">Change home address</option>
+                    )}
                     {serviceRequests.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
