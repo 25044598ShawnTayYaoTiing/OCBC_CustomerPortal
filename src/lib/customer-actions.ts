@@ -14,6 +14,11 @@ export function customerActions(detail: Detail): Correction[] {
     detail.submission.requestType === "RESIDENTIAL_ADDRESS_CHANGE"
       ? "residential"
       : "mailing";
+  const hasSpecificInstruction = (text?: string) =>
+    !!text &&
+    !/[A-Z]{3,}_[A-Z_]+/.test(text) &&
+    text !== "Original instruction" &&
+    !text.startsWith("Upload a supporting PDF with your customer reference");
   return detail.corrections
     .filter(
       (r) =>
@@ -21,12 +26,13 @@ export function customerActions(detail: Detail): Correction[] {
     )
     .map((r) => ({
       ...r,
-      instruction:
-        address &&
-        supportMissing &&
-        ["ATTACH_SUPPORTING_DOCUMENT", "SERVICE_SUPPORT"].includes(
-          r.ruleKey || "",
-        )
+      instruction: hasSpecificInstruction(r.instruction)
+        ? r.instruction
+        : address &&
+            supportMissing &&
+            ["ATTACH_SUPPORTING_DOCUMENT", "SERVICE_SUPPORT"].includes(
+              r.ruleKey || "",
+            )
           ? `Upload a document showing your new ${kind} address and customer reference.`
           : address && r.ruleKey === "SERVICE_SUPPORT"
             ? `Upload a replacement document matching your requested ${kind} address and customer reference.`
