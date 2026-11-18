@@ -17,6 +17,7 @@ export interface Profile {
   id: string;
   name: string;
   customerReference: string;
+  repositoryEvidenceAvailable?: boolean;
   bankingProfile?: BankingProfile;
 }
 export interface Submission {

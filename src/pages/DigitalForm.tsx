@@ -165,6 +165,7 @@ export function DigitalForm() {
   const foreign = tax && values.taxResidency !== "Singapore";
 
   const supportRequired = address || foreign;
+  const canCheckRepository = !id && supportRequired && profile?.repositoryEvidenceAvailable === true;
   function detailsError() {
     if (!values.authorisation)
       return "Confirm your authorisation before continuing.";
@@ -194,7 +195,7 @@ export function DigitalForm() {
       setError(validation);
       return;
     }
-    if (!retry && supportRequired && !existingSupport && !files.length) {
+    if (!retry && supportRequired && !existingSupport && !canCheckRepository && !files.length) {
       setError("Add the required supporting document before submitting.");
       setStage(2);
       return;
@@ -402,6 +403,7 @@ export function DigitalForm() {
               stage === 2 &&
               supportRequired &&
               !existingSupport &&
+              !canCheckRepository &&
               !files.length
             ) {
               setError("Add a supporting document matching the requirements below.");
@@ -656,6 +658,12 @@ export function DigitalForm() {
                     requests.
                   </Notice>
                 )}
+                {canCheckRepository && (
+                  <Notice>
+                    You can submit without uploading a file. We’ll check the authorised
+                    records linked to your profile and ask for evidence if none matches.
+                  </Notice>
+                )}
                 <ImagePageOption checked={combineImages} onChange={setCombineImages} disabled={busy || retry || locked} />
                 <FilePicker
                   files={files}
@@ -749,7 +757,9 @@ export function DigitalForm() {
                   <p>
                     {existingSupport
                       ? "Using the supporting documents already saved with this request."
-                      : "No supporting document selected for this service."}
+                      : canCheckRepository
+                        ? "We’ll check the authorised records linked to your profile."
+                        : "No supporting document selected for this service."}
                   </p>
                 )}
               </div>
