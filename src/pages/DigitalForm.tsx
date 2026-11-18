@@ -289,7 +289,19 @@ export function DigitalForm() {
         e.status >= 400 &&
         e.status < 500
       );
-      if (!uncertain) intent.current = null;
+      if (!uncertain) {
+        intent.current = null;
+        if (
+          e instanceof ApiError &&
+          files.length > 0 &&
+          ["INVALID_PDF", "PDF_ENCRYPTED", "PDF_PAGE_LIMIT", "INVALID_DOCUMENT",
+            "INVALID_IMAGE", "IMAGE_QUALITY", "EXTRACTION_FAILED", "UNSUPPORTED_FORMAT",
+            "UNSUPPORTED_DOCUMENT", "EDIT_EFORM"].includes(e.code)
+        ) {
+          setStage(2);
+          saveDraft(draftKey, { values, files, combineImages, addressReady, retry: false, intent: null });
+        }
+      }
       setRetry(uncertain);
       setError(
         e instanceof Error ? e.message : "Unable to confirm this request.",
