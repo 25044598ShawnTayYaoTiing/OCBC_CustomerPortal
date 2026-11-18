@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  FileCheck2,
   FileText,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -33,7 +32,7 @@ import {
 import { useIntent } from "../lib/upload-intent";
 import type { Detail } from "../types";
 
-const steps = ["Application", "Documents", "Review & submit", "Confirmation"];
+const steps = ["Service", "Documents", "Review & send"];
 
 export function Submit() {
   const { profile } = useAuth();
@@ -59,7 +58,7 @@ export function Submit() {
         <div>
           <button className="text-button" onClick={() => setMethod(false)}>
             <ArrowLeft size={15} />
-            Choose another submission method
+            Back to request options
           </button>
         </div>
         <PdfSubmit />
@@ -70,57 +69,23 @@ export function Submit() {
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="New Service Request"
         title="New request"
-        description="Fill in a guided form, or upload a request you already have as a PDF or image."
+        description="Choose a service and tell us what you’d like to change."
       />
-      <div className="method-grid">
-        <article className="method-card recommended">
-          <span className="method-tag">Recommended · Instant Prefill</span>
-          <div className="service-card-icon">
-            <FileCheck2 size={22} />
-          </div>
-          <h2>Fill in a form</h2>
-          <p>
-            Your existing details are filled in for you. Tell us what you want
-            to change.
-          </p>
-          <Link className="button primary" to="/submit/digital">
-            Start a request
-            <ArrowRight size={16} />
-          </Link>
-        </article>
-
-        <article className="method-card">
-          <span
-            className="method-tag"
-            style={{
-              background: "var(--bg-subtle)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Already have a form?
-          </span>
-          <div
-            className="service-card-icon"
-            style={{
-              background: "var(--bg-subtle)",
-              color: "var(--text-primary)",
-            }}
-          >
-            <FileText size={22} />
-          </div>
-          <h2>Upload a document or image</h2>
-          <p>
-            Upload a synthetic service-request document for your customer profile
-            along with any supporting evidence documents.
-          </p>
-          <button className="button secondary" onClick={() => setMethod(true)}>
-            Choose files
-            <ArrowRight size={16} />
-          </button>
-        </article>
-      </div>
+      <Panel title="Choose a service">
+        <ul className="demo-service-list">
+          {serviceRequests.map((service) => (
+            <li key={service.value}>
+              <Link to={"/submit/digital?step=1&requestType=" + service.value}>
+                <span><strong>{service.label}</strong><small>{service.description}</small></span><ArrowRight size={17} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="form-actions">
+          <button className="text-button" onClick={() => setMethod(true)}>Upload an existing request form <ArrowRight size={16} /></button>
+        </div>
+      </Panel>
     </div>
   );
 }
@@ -161,11 +126,10 @@ function PdfSubmit() {
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Document upload workflow"
         title="Upload a request"
-        description="Submit synthetic request documents for your existing customer profile."
+        description="Send your completed form and any required supporting documents."
       />
-      <ol className="wizard-steps" aria-label="Submission steps">
+      {step < steps.length && <ol className="wizard-steps" aria-label="Submission steps">
         {steps.map((name, i) => (
           <li
             key={name}
@@ -176,7 +140,7 @@ function PdfSubmit() {
             <strong>{name}</strong>
           </li>
         ))}
-      </ol>
+      </ol>}
 
       {blocked ? (
         <Notice>
@@ -397,7 +361,7 @@ function PdfSubmit() {
                     <CheckCircle2 size={28} />
                   </span>
                   <p className="eyebrow">Submission Confirmed</p>
-                  <h2>Your documents are received.</h2>
+                  <h2>Request sent</h2>
                   <p>Keep this reference to track your request.</p>
                   <div className="confirmation-reference">
                     <small className="muted">Submission reference</small>

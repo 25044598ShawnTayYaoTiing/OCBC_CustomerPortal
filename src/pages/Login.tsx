@@ -1,4 +1,4 @@
-import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -30,24 +30,18 @@ export function Login() {
           <span className="auth-badge">
             <ShieldCheck size={14} /> Synthetic Banking Demo
           </span>
-          <h1>Service requests, without the back-and-forth.</h1>
+          <h1>Manage your banking requests</h1>
           <p>
-            Update your mailing address, contact details, or tax residency from your existing profile—with real-time document checks and clear status tracking.
+            Update your details, upload documents and check your request status.
           </p>
 
-        </div>
-        <div className="auth-showcase-foot">
-          <span>AFI Resolve 2.0 · Customer Portal</span>
-          <span>Synthetic records only · Not affiliated with OCBC</span>
         </div>
       </section>
 
       <section className="auth-entry">
         <div className="auth-card">
           <div className="auth-card-head">
-            <p className="eyebrow">Customer Access</p>
-            <h2>Sign in to your portal</h2>
-            <p>Sign in to manage your banking requests.</p>
+            <h2>Sign in</h2>
           </div>
           {reason && <p className="alert alert-info" role="status" style={{ marginBottom: 16 }}>{reason}</p>}
           {configurationError && <div style={{ marginBottom: 16 }}><ErrorBox message={configurationError} /></div>}
@@ -99,12 +93,6 @@ export function Login() {
               <ArrowRight size={16} />
             </button>
           </form>
-          <div className="auth-note">
-            <LockKeyhole size={15} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>
-              Your session is held in memory only. Never enter real banking credentials or upload real customer documents.
-            </span>
-          </div>
         </div>
       </section>
     </main>

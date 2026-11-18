@@ -1,4 +1,4 @@
-﻿import { ArrowUpDown, FilePlus2, RefreshCw, Search } from "lucide-react";
+﻿import { FilePlus2, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../data";
@@ -10,7 +10,6 @@ import {
   Panel,
   statusLabels,
   Badge,
-  date,
 } from "../components/ui";
 import { serviceLabel } from "../lib/service-requests";
 import { CancelRequest } from "../components/CancelRequest";
@@ -19,7 +18,6 @@ export function History() {
   const { submissions } = useData();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [sort, setSort] = useState("newest");
   const items = (submissions.data || [])
     .filter(
       (item) =>
@@ -29,17 +27,12 @@ export function History() {
             ["HUMAN_REVIEW", "ON_HOLD"].includes(item.status))) &&
         item.caseReference.toLowerCase().includes(query.toLowerCase()),
     )
-    .sort(
-      (a, b) =>
-        (sort === "newest" ? -1 : 1) *
-        (Date.parse(a.createdAt) - Date.parse(b.createdAt)),
-    );
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   return (
     <div className="page-stack history-workspace">
       <PageHeader
-        eyebrow="YOUR REQUESTS"
         title="My requests"
-        description="Track progress, provide corrections or cancel before processing starts."
+        description="Open a request to see its status and next steps."
       >
         <Link className="button primary" to="/submit">
           <FilePlus2 size={17} />
@@ -72,25 +65,6 @@ export function History() {
                 </option>
               ))}
           </select>
-          <label className="sort-control">
-            <ArrowUpDown size={15} />
-            <select
-              aria-label="Sort submissions"
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-          </label>
-          <button
-            className="icon-button"
-            aria-label="Refresh submissions"
-            disabled={submissions.refreshing}
-            onClick={() => void submissions.refresh()}
-          >
-            <RefreshCw size={17} />
-          </button>
         </div>
         {submissions.error && (
           <ErrorBox
@@ -126,33 +100,15 @@ export function History() {
                     </div>
                     <div>
                       <h2>{serviceLabel(item.requestType)}</h2>
-                      <p>
-                        {item.status === "CANCELLED"
-                          ? "Cancelled by you. No further action is required."
-                          : item.status === "CORRECTION_REQUIRED"
-                            ? "Review the correction requests to continue."
-                            : item.status === "OPERATIONS"
-                              ? "Your request is being processed. No action is needed from you."
-                              : "View the latest recorded progress."}
-                      </p>
                       <small className="history-reference">
                         {item.caseReference}
                       </small>
                     </div>
                     <div className="portfolio-status">
                       <Badge status={item.status} />
-                      <small>{date(item.createdAt)}</small>
                     </div>
                   </Link>
-                  <footer>
-                    <CancelRequest submission={item} />
-                    <Link
-                      className="text-button"
-                      to={"/submissions/" + item.id}
-                    >
-                      View request
-                    </Link>
-                  </footer>
+                  {item.canCancel && <footer><CancelRequest submission={item} /></footer>}
                 </article>
               ))}
             </div>
@@ -167,9 +123,6 @@ export function History() {
             />
           ))
         )}
-        <div className="table-bottom">
-          {submissions.data ? `${items.length} requests` : "Request history"}
-        </div>
       </Panel>
     </div>
   );

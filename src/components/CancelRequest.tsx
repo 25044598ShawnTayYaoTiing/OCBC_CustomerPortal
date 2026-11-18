@@ -103,22 +103,14 @@ export function CancelRequest({
           }}
         >
           <div className="dialog-content">
-            <p className="eyebrow">CONFIRM CANCELLATION</p>
             <h2 id={`cancel-title-${submission.id}`}>
               Cancel this service request?
             </h2>
             <p>
-              This stops further processing of this request. Documents and the
-              audit history will be retained. To continue later, create a new
-              request.
+              This stops your request. To continue later, you’ll need to start a new one.
             </p>
             <p>
-              Cancellation is only available before the request is sent to
-              Operations for processing. The server will check the current stage
-              again when you confirm.
-            </p>
-            <p className="field-hint">
-              Request reference: {submission.caseReference}
+              You can cancel until we send the request for processing.
             </p>
             {error && <ErrorBox message={error} />}
             {(submission.canCancel !== true ||
@@ -146,7 +138,7 @@ export function CancelRequest({
               }
               onClick={() => void cancel()}
             >
-              {busy ? "Cancelling..." : "Confirm cancellation"}
+              {busy ? "Cancelling..." : "Cancel request"}
             </button>
           </div>
         </dialog>

@@ -30,13 +30,14 @@ const today = () =>
 export function DigitalForm() {
   const { id } = useParams();
   const [query, setQuery] = useSearchParams();
-  const requestedStage = Number(query.get("step") || (id ? 1 : 0));
+  const selectedService = serviceRequests.find((service) => service.value === query.get("requestType"))?.value;
+  const requestedStage = Number(query.get("step") || (id || selectedService ? 1 : 0));
   const stage =
     Number.isInteger(requestedStage) &&
-    requestedStage >= 0 &&
+    requestedStage >= (selectedService ? 1 : 0) &&
     requestedStage <= 3
       ? requestedStage
-      : 0;
+      : selectedService ? 1 : 0;
   function setStage(step: number) {
     setError("");
     setQuery((previous) => {
@@ -51,7 +52,7 @@ export function DigitalForm() {
   const { submissions, notifications } = useData();
   const p = profile?.bankingProfile;
   const pending = useIntent(profile!.id);
-  const draftKey = `${profile!.id}:${id || "new"}`;
+  const draftKey = `${profile!.id}:${id || selectedService || "new"}`;
   const draft = readDraft(draftKey);
   const [files, setFiles] = useState<File[]>(() => draft?.files || []);
   const [combineImages, setCombineImages] = useState(draft?.combineImages || false);
@@ -343,7 +344,7 @@ export function DigitalForm() {
 
   return (
     <div className="page-stack">
-      <div>
+      {stage === 0 && <div>
         <button
           type="button"
           className="text-button"
@@ -353,17 +354,15 @@ export function DigitalForm() {
           }
         >
           <ArrowLeft size={15} />
-          Back{stage > 0 ? " to previous step" : " to request options"}
+          Back to request options
         </button>
-      </div>
+      </div>}
       <PageHeader
-        eyebrow="Guided Digital Request"
         title={
           id
-            ? "Correct your service request"
-            : "Submit a banking service request"
+            ? "Update your request"
+            : serviceLabel(values.requestType)
         }
-        description="Prefilled from your synthetic customer profile. Only fields relevant to your selected service are requested."
       />
 
       <ol className="form-progress" aria-label="Request progress">
@@ -372,9 +371,9 @@ export function DigitalForm() {
           "Your changes",
           "Supporting documents",
           "Review & send",
-        ].map((name, index) => (
+        ].map((name, index) => selectedService && index === 0 ? null : (
           <li key={name} aria-current={stage === index ? "step" : undefined}>
-            <span>{stage > index ? <Check size={14} /> : `0${index + 1}`}</span>
+            <span>{stage > index ? <Check size={14} /> : index + (selectedService ? 0 : 1)}</span>
             <button
               type="button"
               className="text-button"
@@ -417,8 +416,7 @@ export function DigitalForm() {
         <div className="page-stack" style={{ gap: 20 }}>
           <div hidden={stage !== 0 || review}>
             <Panel
-              title="Select banking service"
-              description="Your existing profile details are already on hand."
+              title="Choose a service"
             >
               <div className="eform-fields">
                 <label className="full-width">
@@ -426,7 +424,7 @@ export function DigitalForm() {
                   <select
                     aria-label="Request type"
                     value={values.requestType}
-                    disabled={!!id}
+                    disabled={!!id || !!selectedService}
                     onChange={(e) => {
                       const nextType = e.target.value;
                       setValues((v) => ({
@@ -479,8 +477,8 @@ export function DigitalForm() {
 
             {additionalAccount && (
               <Panel
-                title="Additional account preferences"
-                description="Project demo policy requires a source-of-funds description for current-account requests."
+                title="Account details"
+                description="For a current account, tell us where the money will come from."
               >
                 <div className="eform-fields">
                   <label>
@@ -522,7 +520,7 @@ export function DigitalForm() {
             {contact && (
               <Panel
                 title="Contact-detail update"
-                description="Change your email, phone number, or both. No tax or address declaration is required."
+                description="Change your email, phone number, or both."
               >
                 <div className="eform-fields">
                   <label>
@@ -557,8 +555,7 @@ export function DigitalForm() {
 
             {tax && (
               <Panel
-                title="Tax-residency declaration"
-                description="Declare your synthetic tax jurisdictions."
+                title="Tax residency"
               >
                 <div className="eform-fields">
                   <label className={foreign ? "" : "full-width"}>
@@ -618,7 +615,7 @@ export function DigitalForm() {
               </Panel>
             )}
 
-            <Panel title="Customer declaration and authorisation">
+            <Panel title="Confirm your request">
               <div className="eform-fields">
                 <p className="full-width">
                   The declaration time is recorded automatically when you
@@ -645,7 +642,6 @@ export function DigitalForm() {
           {stage === 2 && (
             <Panel
               title="Supporting documents"
-              description="Prepare your evidence before sending the request."
             >
               <div className="form-body">
                 <DocumentRequirements
@@ -666,28 +662,14 @@ export function DigitalForm() {
                   setFiles={setFiles}
                   disabled={busy || retry || locked}
                 />
-                <p className="field-hint">
-                  Selected files stay in this signed-in session when you go
-                  Back. They are uploaded with your declaration when you submit.
-                  You can preview, replace or remove them first.
-                </p>
               </div>
             </Panel>
           )}
           {review && (
             <Panel
-              title="Review your service request"
-              description="Check the details below before sending."
+              title="Review your request"
             >
               <dl className="review-summary">
-                <div>
-                  <dt>Service</dt>
-                  <dd>{serviceLabel(values.requestType)}</dd>
-                </div>
-                <div>
-                  <dt>Customer reference</dt>
-                  <dd className="mono">{profile!.customerReference}</dd>
-                </div>
                 {address && (
                   <div>
                     <dt>Current address on your profile</dt>
@@ -758,16 +740,6 @@ export function DigitalForm() {
                     )}
                   </>
                 )}
-                <div>
-                  <dt>Declaration timestamp</dt>
-                  <dd>Recorded automatically on submission</dd>
-                </div>
-                <div>
-                  <dt>Authorisation</dt>
-                  <dd>
-                    {values.authorisation ? "Confirmed" : "Not confirmed"}
-                  </dd>
-                </div>
               </dl>
               <div className="form-body">
                 <h3>Supporting documents</h3>
@@ -780,20 +752,6 @@ export function DigitalForm() {
                       : "No supporting document selected for this service."}
                   </p>
                 )}
-                <p>
-                  Files and your declaration are sent together. Validation and
-                  staff approval still apply.
-                </p>
-              </div>
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="button secondary"
-                  disabled={busy || retry}
-                  onClick={() => setStage(1)}
-                >
-                  Edit details
-                </button>
               </div>
             </Panel>
           )}
@@ -807,12 +765,7 @@ export function DigitalForm() {
           {busy && (
             <div className="processing-notice" role="status">
               <progress aria-label="Document upload progress" value={progress} max={100} />{progress < 100 ? ` Uploading: ${progress}%` : " Upload complete. Checking documents..."}
-              <p>
-                Uploading your declaration
-                {files.length ? ` and ${files.length} supporting document(s)` : ""},
-                then checking the package. Keep this tab open. Your request is
-                confirmed only when the server responds.
-              </p>
+              <p>Keep this tab open until you see confirmation.</p>
             </div>
           )}
           {error && <ErrorBox message={error} />}
@@ -834,15 +787,12 @@ export function DigitalForm() {
                     type="button"
                     className="button secondary"
                     disabled={busy || retry}
-                    onClick={() => setStage(stage - 1)}
+                    onClick={() => stage === 1 && selectedService && !id ? navigate("/submit") : setStage(stage - 1)}
                   >
                     <ArrowLeft size={16} />
                     Back
                   </button>
                 )}
-                <Link className="text-link" to="/submissions">
-                  My requests
-                </Link>
               </div>
               <button
                 className="button primary"
@@ -866,7 +816,7 @@ export function DigitalForm() {
                           ? "Continue to review"
                           : id
                             ? "Submit correction"
-                            : "Submit service request"}
+                            : "Send request"}
                 <ArrowRight size={16} />
               </button>
             </div>

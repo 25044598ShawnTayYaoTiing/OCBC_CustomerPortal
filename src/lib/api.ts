@@ -8,7 +8,7 @@ export const configurationError = (() => {
     if (url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/api/customer')) throw Error();
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) throw Error();
     return '';
-  } catch { return 'The customer API is not configured. Set VITE_API_BASE_URL to the complete HTTPS customer API URL.'; }
+  } catch { return 'The portal is temporarily unavailable. Contact the demo organiser for access.'; }
 })();
 
 let session: Session | null = null;
@@ -28,14 +28,16 @@ function errorMessage(status: number, code: string, message: string) {
   if (status === 401) return code === 'INVALID_CREDENTIALS'
     ? 'We could not sign you in. Check your customer credentials and try again.'
     : 'Your session has ended. Sign in again to continue.';
-  if (status === 403) return 'This portal does not have access to that request. Check the configured portal origin or contact your demo administrator.';
+  if (status === 403) return 'This portal does not have access to that request. Sign in with the account that made the request.';
   if (status === 404) return 'This submission or document is not available to your account.';
   if (status === 413) return 'This upload is too large. Each file must be 10 MB or smaller, with no more than 10 files.';
   if (status === 429) return 'Too many requests. Please wait a moment before trying again.';
-  if (status === 426) return 'A secure HTTPS API connection is required. Contact your demo administrator.';
-  if (status >= 500) return 'Document processing is temporarily unavailable. The result of an upload may be uncertain; check your submissions or retry the same request.';
+  if (status === 426) return 'The portal could not connect securely. Contact the demo organiser.';
+  if (status >= 500) return 'Document processing is temporarily unavailable. The result of an upload may be uncertain; check My requests or retry the same upload.';
   if (status === 409 && code === 'IDEMPOTENCY_CONFLICT') return 'This retry does not match the original upload. Reselect the same files in their original order.';
   if (status === 409 && code === 'ALREADY_ROUTED') return 'This application is already with Operations and cannot be changed.';
+  if (code === 'EXTRACTION_FAILED' || code === 'EXTRACTION_INVALID') return 'We could not confirm the details in the document. Try a clear, complete copy.';
+  if (code === 'DOCUMENT_AI_UNAVAILABLE') return 'Document review is temporarily unavailable. Try again shortly.';
   return message || 'The request could not be completed. Please try again.';
 }
 

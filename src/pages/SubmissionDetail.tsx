@@ -302,22 +302,22 @@ export function SubmissionDetail() {
       >
         <h2>
           {data.submission.status === "CANCELLED"
-            ? "Request cancelled"
+            ? "Closed request"
             : actions.length
               ? "What you need to do"
               : locked
-                ? "Sent for processing"
+                ? "What happens next"
                 : "What happens next"}
         </h2>
         <p>{requestNextStep(data.submission.status, actions.length)}</p>
       </section>
-      <CancelRequest
+      {data.submission.status !== "CANCELLED" && <CancelRequest
         submission={data.submission}
         onCancelled={() => {
           setTarget(null);
           void result.refresh();
         }}
-      />
+      />}
       {pending?.returnTo === `/submissions/${id}` && (
         <Notice>
           <strong>Your upload has not been confirmed.</strong>{" "}
@@ -354,10 +354,6 @@ export function SubmissionDetail() {
                 </span>
                 <div>
                   <h3>{request.instruction}</h3>
-                  <p>
-                    Your update stays with this request. We will check it again
-                    when you send it.
-                  </p>
                   <div className="correction-actions">
                     {["SERVICE_OTP", "SERVICE_PHONE"].includes(
                       request.ruleKey || "",
@@ -399,7 +395,6 @@ export function SubmissionDetail() {
       {digital && <SubmittedDetails id={id} />}
       <Panel
         title="Your documents"
-        description="Documents saved with this request."
         action={
           !locked &&
           !actions.length && (
@@ -450,7 +445,6 @@ export function SubmissionDetail() {
         <summary>Request reference and updates</summary>
         <div className="form-body">
           <Reference value={data.submission.caseReference} />
-          <p>Submitted {date(data.submission.createdAt)}</p>
         </div>
         {notifications.error ? (
           <ErrorBox

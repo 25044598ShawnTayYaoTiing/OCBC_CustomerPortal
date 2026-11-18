@@ -1,8 +1,7 @@
-import { Bell, ChevronRight, ClipboardPenLine, FilePlus2, Files, LayoutDashboard, LogOut, Menu, ShieldCheck, UserRound, X } from 'lucide-react';
+import { Bell, FilePlus2, Files, LayoutDashboard, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { useData } from '../data';
 import { useIntent } from '../lib/upload-intent';
 import { Brand, Notice } from './ui';
 
@@ -15,14 +14,12 @@ const nav = [
 
 export function Layout() {
   const { profile, logout } = useAuth();
-  const { submissions } = useData();
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const pending = useIntent(profile!.id);
-  const count = (submissions.data || []).filter(s => ['CORRECTION_REQUIRED', 'HUMAN_REVIEW'].includes(s.status)).length;
 
   useEffect(() => {
     setOpen(false);
@@ -48,7 +45,6 @@ export function Layout() {
     return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', key); };
   }, [open]);
 
-  const section = nav.find(item => item.to !== '/' && location.pathname.startsWith(item.to))?.label || 'Home';
   const initials = profile!.name.split(' ').slice(0, 2).map(n => n[0]).join('');
 
   return (
@@ -66,7 +62,7 @@ export function Layout() {
                 <NavLink key={item.to} end={item.to === '/'} to={item.to}>
                   <item.icon size={15} />
                   <span>{item.label}</span>
-                  {item.to === '/corrections' && count > 0 && <span className="nav-count">{count}</span>}
+
                 </NavLink>
               ))}
             </nav>
@@ -105,14 +101,10 @@ export function Layout() {
             <NavLink key={item.to} to={item.to} end={item.to === '/'}>
               <item.icon size={17} />
               <span>{item.label}</span>
-              {item.to === '/corrections' && count > 0 && <span className="nav-count">{count}</span>}
+
             </NavLink>
           ))}
         </nav>
-        <div className="drawer-footer">
-          <strong>Synthetic demo</strong>
-          <p>Use synthetic records only. Contact your demo administrator for help.</p>
-        </div>
       </aside>}
 
       <main id="main-content" tabIndex={-1} className="portal-main">
@@ -129,8 +121,7 @@ export function Layout() {
 
       <footer className="portal-footer">
         <div className="portal-footer-inner">
-          <span>AFI Resolve · Independent fintech demonstration</span>
-          <span>Synthetic customer records only · All times in SGT</span>
+          <span>Demo · Use synthetic documents only</span>
         </div>
       </footer>
     </div>
