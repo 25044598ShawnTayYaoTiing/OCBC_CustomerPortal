@@ -129,7 +129,6 @@ function CorrectionDialog({
         )}
         <DocumentRequirements
           requestType={detail.submission.requestType || ""}
-          reference={profile!.customerReference}
         />
         <FilePicker
           files={files}

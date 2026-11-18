@@ -28,7 +28,7 @@ export function Login() {
         <Brand inverse />
         <div className="auth-showcase-body">
           <span className="auth-badge">
-            <ShieldCheck size={14} /> Synthetic Banking Demo
+            <ShieldCheck size={14} /> Demo
           </span>
           <h1>Manage your banking requests</h1>
           <p>

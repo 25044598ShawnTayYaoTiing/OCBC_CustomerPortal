@@ -193,7 +193,7 @@ function PdfSubmit() {
                     </div>
                   </dl>
                   <p className="muted">
-                    Your documents must reference this customer reference.
+                    Your uploads will be linked to this request.
                   </p>
                 </div>
                 <div className="form-actions">
@@ -215,7 +215,7 @@ function PdfSubmit() {
                     ? "Restore your upload"
                     : "Upload your documents"
                 }
-                description="Choose PDFs, screenshots or clear photos labelled as synthetic demonstration data."
+                description="Choose PDFs, screenshots or clear photos."
               >
                 <div className="form-body">
                   {upload.samePath && (
@@ -235,7 +235,7 @@ function PdfSubmit() {
                   )}
                   <DocumentRequirements
                     requestType={requestType}
-                    reference={profile!.customerReference}
+
                   />
                   <FilePicker
                     files={files}
@@ -317,7 +317,7 @@ function PdfSubmit() {
                       disabled={upload.busy}
                     />
                     <span>
-                      I confirm these are synthetic demonstration documents and
+                      I confirm these documents contain fictional data and
                       understand they will be processed by AFI Resolve.
                     </span>
                   </label>
@@ -407,10 +407,10 @@ function PdfSubmit() {
             <div className="aside-card">
               <DocumentRequirements
                 requestType={requestType}
-                reference={profile!.customerReference}
+
               />
               <p>
-                Include a synthetic service-request document with your name,
+                Include a service-request document with your name,
                 reference, request type, date and explicit authorisation.
                 Supporting documents alone do not constitute a request.
               </p>

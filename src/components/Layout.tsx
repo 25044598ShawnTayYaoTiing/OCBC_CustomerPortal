@@ -121,7 +121,7 @@ export function Layout() {
 
       <footer className="portal-footer">
         <div className="portal-footer-inner">
-          <span>Demo · Use synthetic documents only</span>
+          <span>Demo</span>
         </div>
       </footer>
     </div>

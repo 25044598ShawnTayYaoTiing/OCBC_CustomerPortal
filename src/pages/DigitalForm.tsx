@@ -318,7 +318,7 @@ export function DigitalForm() {
   if (!loaded || !p)
     return (
       <ErrorBox
-        message={error || "Your existing synthetic profile is unavailable."}
+        message={error || "Your existing profile is unavailable."}
       />
     );
   if (id && values.requestType === "ACCOUNT_OPENING") {
@@ -609,7 +609,7 @@ export function DigitalForm() {
                       }
                     />
                     <span>
-                      I declare that my synthetic tax jurisdictions and TIN
+                      I declare that my tax jurisdictions and TIN
                       details are complete and accurate.
                     </span>
                   </label>
@@ -633,7 +633,7 @@ export function DigitalForm() {
                   <span>
                     I authorise this{" "}
                     {serviceLabel(values.requestType).toLowerCase()} using
-                    synthetic demonstration information and the evidence
+                    fictional information and the evidence
                     provided.
                   </span>
                 </label>
@@ -649,7 +649,7 @@ export function DigitalForm() {
                 <DocumentRequirements
                   requestType={values.requestType}
                   foreign={foreign}
-                  reference={profile!.customerReference}
+
                 />
                 {existingSupport && (
                   <Notice>
@@ -847,7 +847,7 @@ export function DigitalForm() {
                   <dd className="mono">{profile!.customerReference}</dd>
                 </div>
                 <div>
-                  <dt>Synthetic identity</dt>
+                  <dt>Identity number</dt>
                   <dd className="mono">{p.identityNumber}</dd>
                 </div>
                 <div>
@@ -879,7 +879,7 @@ export function DigitalForm() {
               <DocumentRequirements
                 requestType={values.requestType}
                 foreign={foreign}
-                reference={profile!.customerReference}
+
               />
               <p>
                 Your request is sent for processing only after required checks
