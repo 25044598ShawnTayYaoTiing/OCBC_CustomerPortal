@@ -8,7 +8,16 @@ export function Timeline({ detail }: { detail: Detail }) {
   const verified = ['READY', 'OPERATIONS'].includes(s.status);
   const steps = [
     { title: 'Submission recorded', done: !!s.createdAt, current: false, text: date(s.createdAt, true) },
-    { title: 'Document extraction', done: false, current: s.status === 'PENDING_VALIDATION', text: 'Detailed extraction status is not available' },
+    {
+      title: 'Document extraction',
+      done: detail.documents.length > 0 && !detail.processing?.pendingVerification && checked,
+      current: !!detail.processing?.pendingVerification || s.status === 'PENDING_VALIDATION',
+      text: detail.processing?.pendingVerification
+        ? 'Documents saved; awaiting automated verification'
+        : checked
+          ? 'Document evidence checked'
+          : 'Waiting for document verification',
+    },
     { title: 'Validation recorded', done: checked, current: false, text: checked ? date(s.validatedAt, true) : 'Awaiting a recorded result' },
     { title: 'Resolution and corrections', done: !detail.corrections.length && checked, current: detail.corrections.length > 0, text: detail.corrections.length ? `${detail.corrections.length} outstanding document ${detail.corrections.length === 1 ? 'request' : 'requests'}` : checked ? 'Current package status' : 'Requests appear after processing' },
     { title: 'Approval / readiness', done: verified, current: false, text: verified ? 'Document checks satisfied; account approval is separate' : 'Not yet confirmed' },

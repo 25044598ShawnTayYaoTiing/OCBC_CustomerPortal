@@ -232,9 +232,13 @@ export function SubmissionDetail() {
   const pending = useIntent(profile!.id);
   const [target, setTarget] = useState<UploadTarget | null>(null);
   const [notice, setNotice] = useState("");
+  const [retryingValidation, setRetryingValidation] = useState(false);
+  const [retryError, setRetryError] = useState("");
   useEffect(() => {
     setTarget(null);
     setNotice("");
+    setRetryingValidation(false);
+    setRetryError("");
   }, [id]);
   const data = result.data;
   if (result.loading) return <Loading text="Loading your request..." />;
@@ -256,6 +260,32 @@ export function SubmissionDetail() {
       request.documentIds.length ? { request } : { request, add: true },
     );
   }
+  async function retryVerification() {
+    if (!id) return;
+    setRetryingValidation(true);
+    setRetryError("");
+    try {
+      const updated = await api<Detail>(`/submissions/${id}/retry-validation`, {
+        method: "POST",
+        timeout: 95000,
+      });
+      await Promise.all([result.refresh(), notifications.refresh()]);
+      setNotice(
+        updated.processing?.pendingVerification
+          ? "Automated verification is still delayed. Your saved documents remain intact; please try again shortly."
+          : "Document verification completed.",
+      );
+    } catch (e) {
+      setRetryError(
+        e instanceof Error
+          ? e.message
+          : "Verification is still delayed. Your documents remain saved; retry shortly.",
+      );
+    } finally {
+      setRetryingValidation(false);
+    }
+  }
+
   function resume() {
     if (!pending) return;
     const doc = pending.path.match(/\/documents\/([^/]+)\/replacement$/)?.[1];
@@ -317,6 +347,24 @@ export function SubmissionDetail() {
           void result.refresh();
         }}
       />}
+      {data.processing?.pendingVerification && !locked && (
+        <Notice>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+            <span>
+              <strong>Verification pending.</strong> Your request and documents are safely saved. Retry verification without re-uploading your files.
+            </span>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={retryingValidation}
+              onClick={() => void retryVerification()}
+            >
+              {retryingValidation ? "Verifying..." : "Retry verification"}
+            </button>
+          </div>
+          {retryError && <p className="field-hint" style={{ marginTop: "0.5rem" }}>{retryError}</p>}
+        </Notice>
+      )}
       {pending?.returnTo === `/submissions/${id}` && (
         <Notice>
           <strong>Your upload has not been confirmed.</strong>{" "}

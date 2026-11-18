@@ -61,6 +61,7 @@ export interface Detail {
     received: boolean;
     validated: boolean;
     revalidation: boolean;
+    pendingVerification?: boolean;
     reviewRequired: boolean;
   };
   contactVerification?: {
