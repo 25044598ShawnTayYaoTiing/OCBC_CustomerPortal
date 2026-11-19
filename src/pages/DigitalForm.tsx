@@ -9,7 +9,7 @@ import {
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useAuth } from "../auth";
 import { useData } from "../data";
-import { useIntent } from "../lib/upload-intent";
+import { fingerprint, useIntent } from "../lib/upload-intent";
 import { api, ApiError } from "../lib/api";
 import { serviceLabel, serviceRequests } from "../lib/service-requests";
 import type { Detail, DigitalValues } from "../types";
@@ -402,7 +402,25 @@ export function DigitalForm() {
     setError("");
     setRecoveryNotice("");
     try {
-      const status = await checkRequestStatus(key);
+      const pendingRecord = eformPending?.key === key ? eformPending : undefined;
+      const fileHashes = pendingRecord?.files?.length
+        ? pendingRecord.files.map((f) => f.sha256)
+        : wasMultipart && files.length
+          ? (await fingerprint(files).catch(() => [])).map((f) => f.sha256)
+          : undefined;
+      const effectiveCombine =
+        typeof pendingRecord?.combineImages === "boolean"
+          ? pendingRecord.combineImages
+          : combineImages;
+      const expectedCount =
+        fileHashes?.length ||
+        pendingRecord?.files?.length ||
+        (wasMultipart && files.length ? files.length : undefined);
+      const status = await checkRequestStatus(key, {
+        ...(expectedCount ? { expectedCount } : {}),
+        ...(wasMultipart || pendingRecord?.multipart ? { combineImages: effectiveCombine } : {}),
+        ...(fileHashes?.length ? { fileHashes } : {}),
+      });
       if (status.inProgress) {
         setError(
           "Your earlier request is still being processed. Wait a moment and check status again before editing.",
@@ -410,6 +428,35 @@ export function DigitalForm() {
         return;
       }
       if (status.found && status.submissionId) {
+        const expectsDocs =
+          wasMultipart ||
+          !!pendingRecord?.multipart ||
+          !!status.operation?.includes("/with-documents") ||
+          !!status.operation?.includes("/documents") ||
+          status.operation === "/submissions" ||
+          !!status.operation?.startsWith("/submissions?");
+        const isComplete =
+          status.complete !== undefined
+            ? Boolean(status.complete) && (!expectsDocs || Boolean(status.hasDocuments))
+            : !expectsDocs || Boolean(status.hasDocuments);
+        const isIncomplete = Boolean(status.incomplete) || (expectsDocs && !isComplete);
+        if (isIncomplete) {
+          if (pendingRecord) {
+            saveEformIntent({
+              ...pendingRecord,
+              incompleteSubmissionId: status.submissionId,
+            });
+          }
+          setRetry(Boolean(intent.current));
+          const confirmed = status.uploadedDocumentCount ?? 0;
+          const totalExpected = status.expectedDocumentCount || expectedCount || 1;
+          setRecoveryNotice(
+            intent.current
+              ? `Your digital declaration reached the system (reference ${status.submissionId}), but only ${confirmed} of ${totalExpected} expected supporting document(s) were confirmed. Retry your original request in this tab to finish uploading the same files without creating a duplicate case, or open the submission to add missing documents.`
+              : `Your digital declaration reached the system (reference ${status.submissionId}), but only ${confirmed} of ${totalExpected} expected supporting document(s) were confirmed. Upload the missing documents on your submission to complete processing without creating a duplicate request.`,
+          );
+          return;
+        }
         intent.current = null;
         clearEformIntent(profile!.id);
         clearDraft(draftKey);
@@ -486,19 +533,43 @@ export function DigitalForm() {
     );
   }
   if (unresolvedAfterRefresh && eformPending) {
+    const incompleteId = eformPending.incompleteSubmissionId;
     return (
       <div className="page-stack">
-        <PageHeader title="Confirm earlier request" />
-        <Panel title="Unconfirmed submission detected">
+        <PageHeader
+          title={
+            incompleteId
+              ? "Resume incomplete submission"
+              : "Confirm earlier request"
+          }
+        />
+        <Panel
+          title={
+            incompleteId
+              ? "Supporting documents incomplete"
+              : "Unconfirmed submission detected"
+          }
+        >
           <Notice>
-            An earlier {serviceLabel(eformPending.requestType).toLowerCase()} submission did not receive final confirmation before this page reloaded. We are verifying whether it reached the system so duplicate requests are not created.
+            {incompleteId
+              ? `Your earlier ${serviceLabel(eformPending.requestType).toLowerCase()} declaration was saved (reference ${incompleteId}), but not all supporting documents were received before this page reloaded. Resume your existing submission below to upload missing documents without creating a duplicate request.`
+              : `An earlier ${serviceLabel(eformPending.requestType).toLowerCase()} submission did not receive final confirmation before this page reloaded. We are verifying whether it reached the system so duplicate requests are not created.`}
           </Notice>
+          {recoveryNotice && <Notice>{recoveryNotice}</Notice>}
           {error && <ErrorBox message={error} />}
           {checkingStatus && <Loading text="Checking request status..." />}
           <div className="form-actions" style={{ borderTop: 0, marginTop: 12 }}>
+            {incompleteId && (
+              <Link
+                className="button primary"
+                to={`/submissions/${incompleteId}`}
+              >
+                Upload missing documents
+              </Link>
+            )}
             <button
               type="button"
-              className="button primary"
+              className={incompleteId ? "button secondary" : "button primary"}
               disabled={checkingStatus}
               onClick={() => void verifyPendingIntent(eformPending.key, eformPending.multipart)}
             >
@@ -957,6 +1028,17 @@ export function DigitalForm() {
             <Notice>
               The outcome is unconfirmed. Retry the same request in this tab or
               check My requests before creating another request.
+              {eformPending?.incompleteSubmissionId && (
+                <>
+                  {" "}
+                  <Link
+                    className="text-link"
+                    to={`/submissions/${eformPending.incompleteSubmissionId}`}
+                  >
+                    Open saved request ({eformPending.incompleteSubmissionId}) to upload missing documents
+                  </Link>
+                </>
+              )}
             </Notice>
           )}
 

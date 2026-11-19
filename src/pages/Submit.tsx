@@ -44,11 +44,18 @@ export function Submit() {
   );
 
   if (pendingEform) {
+    const resumeTo = pendingEform.incompleteSubmissionId
+      ? `/submissions/${pendingEform.incompleteSubmissionId}`
+      : pendingEform.returnTo;
     return (
       <Notice>
-        Confirm or check the status of your earlier digital request before starting another application.{" "}
-        <Link className="text-link" to={pendingEform.returnTo}>
-          Review pending request
+        {pendingEform.incompleteSubmissionId
+          ? "Your earlier digital request is missing supporting documents. Upload the remaining documents before starting another application. "
+          : "Confirm or check the status of your earlier digital request before starting another application. "}
+        <Link className="text-link" to={resumeTo}>
+          {pendingEform.incompleteSubmissionId
+            ? "Complete missing documents"
+            : "Review pending request"}
         </Link>
       </Notice>
     );

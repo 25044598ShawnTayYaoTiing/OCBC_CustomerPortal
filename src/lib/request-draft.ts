@@ -37,6 +37,7 @@ export interface EformIntent {
   returnTo: string;
   requestType: string;
   submissionId?: string;
+  incompleteSubmissionId?: string;
   multipart: boolean;
   combineImages?: boolean;
   createdAt: string;
@@ -47,11 +48,15 @@ export interface EformIntent {
 export interface RequestStatusResponse {
   found: boolean;
   inProgress?: boolean;
+  complete?: boolean;
+  incomplete?: boolean;
   submissionId?: string;
   status?: string;
   revision?: number;
   operation?: string;
   hasDocuments?: boolean;
+  uploadedDocumentCount?: number;
+  expectedDocumentCount?: number;
   pendingVerification?: boolean;
 }
 
@@ -261,8 +266,33 @@ export async function buildEformIntentRecord(params: {
   };
 }
 
-export const checkRequestStatus = (key: string) =>
-  api<RequestStatusResponse>(`/requests/${encodeURIComponent(key)}/status`);
+export interface RequestStatusCheckOptions {
+  expectedCount?: number;
+  combineImages?: boolean;
+  fileHashes?: string[];
+}
+
+export const checkRequestStatus = (
+  key: string,
+  options?: RequestStatusCheckOptions,
+) => {
+  const params = new URLSearchParams();
+  if (typeof options?.expectedCount === "number" && options.expectedCount > 0) {
+    params.set("expectedCount", String(options.expectedCount));
+  }
+  if (typeof options?.combineImages === "boolean") {
+    params.set("combineImages", String(options.combineImages));
+  }
+  if (options?.fileHashes?.length) {
+    options.fileHashes.forEach((hash) => {
+      if (hash) params.append("fileHashes", hash);
+    });
+  }
+  const qs = params.toString();
+  return api<RequestStatusResponse>(
+    `/requests/${encodeURIComponent(key)}/status${qs ? `?${qs}` : ""}`,
+  );
+};
 
 export const clearRequestDrafts = () => {
   drafts.clear();

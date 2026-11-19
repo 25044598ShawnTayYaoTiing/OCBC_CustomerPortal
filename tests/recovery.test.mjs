@@ -46,6 +46,9 @@ const eformIntent = {
 
 test('eform recovery intent validates route, identity, request type and body hash without PII', () => {
   assert.equal(validEformIntent(eformIntent, eformIntent.customerId, eformIntent.apiBase), true);
+  assert.equal(validEformIntent({ ...eformIntent, incompleteSubmissionId: 'SUB-123' }, eformIntent.customerId, eformIntent.apiBase), true);
+  assert.equal(validEformIntent({ ...eformIntent, incompleteSubmissionId: '../admin' }, eformIntent.customerId, eformIntent.apiBase), false);
+  assert.equal(validEformIntent({ ...eformIntent, incompleteSubmissionId: 'x'.repeat(65) }, eformIntent.customerId, eformIntent.apiBase), false);
   assert.equal(validEformIntent({ ...eformIntent, submissionId: 'SUB-1', path: '/submissions/SUB-1/eform', returnTo: '/submissions/SUB-1/form', multipart: false, files: undefined }, eformIntent.customerId, eformIntent.apiBase), true);
   assert.equal(validEformIntent(eformIntent, 'CUSTOMER-B', eformIntent.apiBase), false);
   assert.equal(validEformIntent({ ...eformIntent, path: '/api/documents/rules' }, eformIntent.customerId, eformIntent.apiBase), false);

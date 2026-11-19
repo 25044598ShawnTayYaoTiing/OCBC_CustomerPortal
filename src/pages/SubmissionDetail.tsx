@@ -21,6 +21,11 @@ import { jsonPost } from "../lib/api";
 import { useAuth } from "../auth";
 import { useData, useResource } from "../data";
 import { intentFiles, useIntent } from "../lib/upload-intent";
+import {
+  checkRequestStatus,
+  clearEformIntent,
+  useEformIntent,
+} from "../lib/request-draft";
 import type { Correction, Detail, Document } from "../types";
 import {
   Badge,
@@ -238,10 +243,12 @@ export function SubmissionDetail() {
   const { notifications } = useData();
   const { profile } = useAuth();
   const pending = useIntent(profile!.id);
+  const eformPending = useEformIntent(profile!.id);
   const [target, setTarget] = useState<UploadTarget | null>(null);
   const [notice, setNotice] = useState("");
   const [retryingValidation, setRetryingValidation] = useState(false);
   const [retryError, setRetryError] = useState("");
+  const [checkingEformStatus, setCheckingEformStatus] = useState(false);
   useEffect(() => {
     setTarget(null);
     setNotice("");
@@ -249,6 +256,16 @@ export function SubmissionDetail() {
     setRetryError("");
   }, [id]);
   const data = result.data;
+  useEffect(() => {
+    if (
+      data &&
+      ["OPERATIONS", "CANCELLED"].includes(data.submission.status) &&
+      eformPending &&
+      (eformPending.incompleteSubmissionId === id || eformPending.submissionId === id)
+    ) {
+      clearEformIntent(profile!.id);
+    }
+  }, [data, eformPending, id, profile]);
   if (result.loading) return <Loading text="Loading your request..." />;
   if (!data)
     return (
@@ -314,6 +331,37 @@ export function SubmissionDetail() {
         : { add: true },
     );
   }
+  async function recheckIncompleteEform() {
+    if (!eformPending || checkingEformStatus) return;
+    setCheckingEformStatus(true);
+    try {
+      const fileHashes = eformPending.files?.map((f) => f.sha256).filter(Boolean);
+      const status = await checkRequestStatus(eformPending.key, {
+        ...(eformPending.files?.length ? { expectedCount: eformPending.files.length } : {}),
+        ...(eformPending.multipart ? { combineImages: !!eformPending.combineImages } : {}),
+        ...(fileHashes?.length ? { fileHashes } : {}),
+      });
+      if (!status.inProgress && status.complete && status.hasDocuments) {
+        clearEformIntent(profile!.id);
+        setNotice("All supporting documents for your request have been confirmed.");
+        await Promise.all([result.refresh(), notifications.refresh()]);
+      } else if (status.inProgress) {
+        setNotice("Your previous upload is still being processed. Wait a moment and refresh.");
+      } else {
+        setNotice(
+          `Confirmed ${status.uploadedDocumentCount ?? 0} of ${status.expectedDocumentCount ?? eformPending.files?.length ?? 1} expected supporting document(s). Upload the missing documents below to complete your request.`,
+        );
+      }
+    } catch (e) {
+      setNotice(
+        e instanceof Error
+          ? e.message
+          : "Unable to confirm upload status right now. Upload any missing documents below.",
+      );
+    } finally {
+      setCheckingEformStatus(false);
+    }
+  }
   return (
     <div className="page-stack customer-journey">
       <Link className="back-link" to="/submissions">
@@ -378,6 +426,32 @@ export function SubmissionDetail() {
             </button>
           </div>
           {retryError && <p className="field-hint" style={{ marginTop: "0.5rem" }}>{retryError}</p>}
+        </Notice>
+      )}
+      {eformPending?.incompleteSubmissionId === id && !locked && (
+        <Notice>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+            <span>
+              <strong>Supporting documents incomplete.</strong> Your digital declaration was saved, but not all supporting documents were confirmed.
+            </span>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => setTarget({ add: true })}
+              >
+                Upload missing documents
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={checkingEformStatus}
+                onClick={() => void recheckIncompleteEform()}
+              >
+                {checkingEformStatus ? "Checking status..." : "Re-check status"}
+              </button>
+            </div>
+          </div>
         </Notice>
       )}
       {pending?.returnTo === `/submissions/${id}` && (
@@ -570,6 +644,12 @@ export function SubmissionDetail() {
           onClose={() => setTarget(null)}
           onSuccess={() => {
             setTarget(null);
+            if (
+              eformPending &&
+              (eformPending.incompleteSubmissionId === id || eformPending.submissionId === id)
+            ) {
+              clearEformIntent(profile!.id);
+            }
             setNotice(
               "Your document was received. Check the updated status below.",
             );

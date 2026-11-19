@@ -50,6 +50,8 @@ export function validEformIntent(value, customerId, apiBase) {
   if (value.combineImages !== undefined && typeof value.combineImages !== 'boolean') return false;
   if (value.submissionId !== undefined && value.submissionId !== ''
     && (typeof value.submissionId !== 'string' || !/^[\w-]{1,64}$/.test(value.submissionId))) return false;
+  if (value.incompleteSubmissionId !== undefined && value.incompleteSubmissionId !== ''
+    && (typeof value.incompleteSubmissionId !== 'string' || !/^[\w-]{1,64}$/.test(value.incompleteSubmissionId))) return false;
   if (!REQUEST_TYPES.has(value.requestType)) return false;
   if (typeof value.path !== 'string'
     || !/^\/(?:eforms(?:\/with-documents)?|submissions\/[\w-]+\/eform(?:\/with-documents)?)$/.test(value.path)) return false;
