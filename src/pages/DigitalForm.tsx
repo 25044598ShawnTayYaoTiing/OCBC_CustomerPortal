@@ -201,9 +201,10 @@ export function DigitalForm() {
       return;
     }
     if (files.length) {
-      const problem = await validateFiles(files);
+      const problem = await validateFiles(files, 10, combineImages);
       if (problem) {
         setError(problem);
+        setStage(2);
         return;
       }
     }
@@ -297,7 +298,8 @@ export function DigitalForm() {
           e instanceof ApiError &&
           files.length > 0 &&
           ["INVALID_PDF", "PDF_ENCRYPTED", "PDF_PAGE_LIMIT", "INVALID_DOCUMENT",
-            "INVALID_IMAGE", "IMAGE_QUALITY", "EXTRACTION_FAILED", "UNSUPPORTED_FORMAT",
+            "INVALID_IMAGE", "INVALID_IMAGE_GROUP", "FILE_LIMIT", "DUPLICATE_FILE",
+            "IMAGE_QUALITY", "EXTRACTION_FAILED", "UNSUPPORTED_FORMAT",
             "UNSUPPORTED_DOCUMENT", "EDIT_EFORM"].includes(e.code)
         ) {
           setStage(2);
@@ -795,7 +797,21 @@ export function DigitalForm() {
               style={{ borderTop: 0, borderRadius: "var(--radius-lg)" }}
             >
               <div className="step-back-actions">
-                {stage > 0 && (
+                {retry ? (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      intent.current = null;
+                      setRetry(false);
+                      setError("");
+                      saveDraft(draftKey, { values, files, combineImages, addressReady, retry: false, intent: null });
+                    }}
+                  >
+                    Edit request &amp; files
+                  </button>
+                ) : stage > 0 && (
                   <button
                     type="button"
                     className="button secondary"

@@ -17,3 +17,10 @@ test('grouped-image retry metadata survives a reload for service requests', () =
   assert.equal(validIntent(intent, intent.customerId, intent.apiBase), true);
   assert.equal(validIntent({ ...intent, combineImages: 'true' }, intent.customerId, intent.apiBase), false);
 });
+
+test('grouped-image validation enforces image-only and 12 MB combined cap', async () => {
+  const pdf = new File([Buffer.from('%PDF-1.7')], 'form.pdf');
+  const png = new File([new Uint8Array([137,80,78,71,13,10,26,10])], 'page1.png');
+  assert.match(await validateFiles([pdf], 10, true), /JPG or PNG images/);
+  assert.equal(await validateFiles([png], 10, true), '');
+});

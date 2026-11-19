@@ -7,7 +7,7 @@ const {customerActions,requestNextStep}=await import('data:text/javascript;base6
 const task=(ruleKey)=>({id:ruleKey,ruleKey,instruction:'Original instruction',documentIds:[]});
 const detail={submission:{requestType:'RESIDENTIAL_ADDRESS_CHANGE'},documents:[],corrections:[task('ATTACH_SUPPORTING_DOCUMENT'),task('SERVICE_SUPPORT'),task('SERVICE_DETAILS')]};
 test('one missing supporting document produces one upload action while preserving a separate detail correction',()=>{
- const actions=customerActions(detail);assert.equal(actions.length,2);assert.match(actions[0].instruction,/Upload a document.*residential/);assert.equal(detail.corrections.length,3);
+ const actions=customerActions(detail);assert.equal(actions.length,2);assert.match(actions[0].instruction,/Upload a document.*name.*residential/);assert.doesNotMatch(actions[0].instruction,/customer reference/i);assert.equal(detail.corrections.length,3);
 });
 test('existing supporting evidence retains its mismatch correction',()=>{
  const actions=customerActions({...detail,documents:[{type:'SUPPORTING_DOCUMENT'}],corrections:[task('SERVICE_SUPPORT')]});assert.equal(actions.length,1);assert.match(actions[0].instruction,/replacement document/);

@@ -319,9 +319,9 @@ export function useUpload(path: string, returnTo: string, initialCombineImages =
       const message = await validateFiles(
         files,
         path.endsWith("/replacement") && !combineImages ? 1 : 10,
+        combineImages,
       );
       if (message) throw new Error(message);
-      if (combineImages && (files.some(file => !/\.(png|jpe?g)$/i.test(file.name)) || files.reduce((n, file) => n + file.size, 0) > 12 * 1024 * 1024)) throw new Error('Pages of one form must all be JPG or PNG images, at most 12 MB combined.');
       const hashes = await fingerprint(files);
       if (intent && !sameFiles(intent.files, hashes))
         throw new Error(
@@ -387,18 +387,21 @@ export function useUpload(path: string, returnTo: string, initialCombineImages =
       setBusy(false);
     }
   }
+  useEffect(() => { setError(""); }, [path]);
   useEffect(() => { if (pending?.combineImages !== undefined) setCombineImages(pending.combineImages); }, [pending]);
   return { submit, busy, progress, combineImages, setCombineImages, error, pending, samePath, initialFiles };
 }
 
 export function UploadFeedback({
   uploader,
+  showGrouping = true,
 }: {
   uploader: ReturnType<typeof useUpload>;
+  showGrouping?: boolean;
 }) {
   return (
     <>
-      {!uploader.busy && <ImagePageOption checked={uploader.combineImages} disabled={!!uploader.pending} onChange={uploader.setCombineImages} />}
+      {showGrouping && !uploader.busy && <ImagePageOption checked={uploader.combineImages} disabled={!!uploader.pending} onChange={uploader.setCombineImages} />}
       {uploader.busy && (
         <div className="processing-notice" role="status">
           <LoaderCircle className="spin" size={22} />

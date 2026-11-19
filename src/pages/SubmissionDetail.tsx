@@ -34,7 +34,7 @@ import {
   Reference,
   titleCase,
 } from "../components/ui";
-import { FilePicker, UploadFeedback, useUpload } from "../components/Upload";
+import { FilePicker, ImagePageOption, UploadFeedback, useUpload } from "../components/Upload";
 import { Timeline } from "../components/Timeline";
 import { NotificationList } from "../components/Records";
 
@@ -130,6 +130,13 @@ function CorrectionDialog({
         <DocumentRequirements
           requestType={detail.submission.requestType || ""}
         />
+        {!uploader.busy && (
+          <ImagePageOption
+            checked={uploader.combineImages}
+            disabled={!!uploader.pending}
+            onChange={uploader.setCombineImages}
+          />
+        )}
         <FilePicker
           files={files}
           setFiles={setFiles}
@@ -141,7 +148,7 @@ function CorrectionDialog({
           Replacing a document retains its earlier version. Requests stay open
           until the service confirms successful revalidation.
         </p>
-        <UploadFeedback uploader={uploader} />
+        <UploadFeedback uploader={uploader} showGrouping={false} />
         {uploader.pending && !uploader.samePath && (
           <Notice>
             Another document request is awaiting confirmation. Close this dialog
@@ -256,9 +263,16 @@ export function SubmissionDetail() {
     (n) => n.submissionId === id,
   );
   function openAction(request: Correction) {
-    setTarget(
-      request.documentIds.length ? { request } : { request, add: true },
-    );
+    if (request.documentIds.length) {
+      setTarget({ request });
+      return;
+    }
+    const uploaded = data!.documents.filter((d) => d.captureMethod !== "DIGITAL_EFORM");
+    const replaceable =
+      ["ATTACH_SUPPORTING_DOCUMENT", "SERVICE_SUPPORT"].includes(request.ruleKey || "")
+        ? uploaded.find((d) => d.type === "UNKNOWN") || (uploaded.length === 1 ? uploaded[0] : undefined)
+        : undefined;
+    setTarget(replaceable ? { request, document: replaceable } : { request, add: true });
   }
   async function retryVerification() {
     if (!id) return;
@@ -443,8 +457,7 @@ export function SubmissionDetail() {
       <Panel
         title="Your documents"
         action={
-          !locked &&
-          !actions.length && (
+          !locked && (
             <button
               className="text-button"
               onClick={() => setTarget({ add: true })}
