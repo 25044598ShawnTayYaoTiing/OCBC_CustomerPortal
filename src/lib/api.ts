@@ -33,6 +33,7 @@ function errorMessage(status: number, code: string, message: string) {
   if (status === 413) return 'This upload is too large. Each file must be 10 MB or smaller, with no more than 10 files.';
   if (status === 429) return 'Too many requests. Please wait a moment before trying again.';
   if (status === 426) return 'The portal could not connect securely. Contact the demo organiser.';
+  if (code === 'REQUEST_IN_PROGRESS' || code === 'IDEMPOTENCY_IN_PROGRESS') return 'Your request is still being processed. Wait a moment and check your request status before retrying or editing.';
   if (status >= 500) return 'Document processing is temporarily unavailable. The result of an upload may be uncertain; check My requests or retry the same upload.';
   if (status === 409 && code === 'IDEMPOTENCY_CONFLICT') return 'This retry does not match the original upload. Reselect the same files in their original order.';
   if (status === 409 && code === 'ALREADY_ROUTED') return 'This application is already with Operations and cannot be changed.';

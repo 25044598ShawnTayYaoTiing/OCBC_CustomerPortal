@@ -3,6 +3,7 @@ import {
   readPdfDraft,
   savePdfDraft,
   clearPdfDraft,
+  useEformIntent,
 } from "../lib/request-draft";
 import { serviceLabel, serviceRequests } from "../lib/service-requests";
 import {
@@ -37,10 +38,21 @@ const steps = ["Service", "Documents", "Review & send"];
 export function Submit() {
   const { profile } = useAuth();
   const pending = useIntent(profile!.id);
+  const pendingEform = useEformIntent(profile!.id);
   const [method, setMethod] = useState(
     () => pending?.path.split("?")[0] === "/submissions",
   );
 
+  if (pendingEform) {
+    return (
+      <Notice>
+        Confirm or check the status of your earlier digital request before starting another application.{" "}
+        <Link className="text-link" to={pendingEform.returnTo}>
+          Review pending request
+        </Link>
+      </Notice>
+    );
+  }
   if (pending && pending.path.split("?")[0] !== "/submissions") {
     return (
       <Notice>

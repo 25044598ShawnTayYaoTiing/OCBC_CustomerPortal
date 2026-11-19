@@ -16,7 +16,17 @@ import type { Detail, DigitalValues } from "../types";
 import { ErrorBox, Loading, Notice, PageHeader, Panel } from "../components/ui";
 import { FilePicker, ImagePageOption, validateFiles } from "../components/Upload";
 import { DocumentRequirements } from "../components/DocumentRequirements";
-import { readDraft, saveDraft, clearDraft } from "../lib/request-draft";
+import {
+  buildEformIntentRecord,
+  checkRequestStatus,
+  clearDraft,
+  clearEformIntent,
+  readDraft,
+  readPersistedDraftMeta,
+  saveDraft,
+  saveEformIntent,
+  useEformIntent,
+} from "../lib/request-draft";
 import { LegacyDigitalForm } from "./LegacyDigitalForm";
 
 const today = () =>
@@ -27,11 +37,39 @@ const today = () =>
     day: "2-digit",
   }).format(new Date());
 
+function normaliseFormValues(raw: DigitalValues): DigitalValues {
+  return {
+    ...raw,
+    accountType: raw.accountType ?? "SAVINGS",
+    currency: raw.currency ?? "SGD",
+    mailingAddress: raw.mailingAddress ?? "",
+    email: raw.email ?? "",
+    mobile: raw.mobile ?? "",
+    occupation: raw.occupation ?? "",
+    taxResidency: raw.taxResidency ?? "Singapore",
+    foreignTaxCountry: raw.foreignTaxCountry ?? "",
+    taxIdentifier: raw.taxIdentifier ?? "",
+    declarationDate: raw.declarationDate ?? today(),
+    sourceOfFunds: raw.sourceOfFunds ?? "",
+    taxDeclaration: !!raw.taxDeclaration,
+    authorisation: !!raw.authorisation,
+  };
+}
+
 export function DigitalForm() {
   const { id } = useParams();
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+  const { submissions, notifications } = useData();
+  const p = profile?.bankingProfile;
+  const pending = useIntent(profile!.id);
+  const eformPending = useEformIntent(profile!.id);
   const [query, setQuery] = useSearchParams();
   const selectedService = serviceRequests.find((service) => service.value === query.get("requestType"))?.value;
-  const requestedStage = Number(query.get("step") || (id || selectedService ? 1 : 0));
+  const draftKey = `${profile!.id}:${id || selectedService || "new"}`;
+  const draft = readDraft(draftKey);
+  const draftMeta = draft ? null : readPersistedDraftMeta(draftKey);
+  const requestedStage = Number(query.get("step") || (id || selectedService ? 1 : (draftMeta?.stage ?? 0)));
   const stage =
     Number.isInteger(requestedStage) &&
     requestedStage >= (selectedService ? 1 : 0) &&
@@ -47,15 +85,10 @@ export function DigitalForm() {
     });
   }
   const review = stage === 3;
-  const { profile } = useAuth();
-  const navigate = useNavigate();
-  const { submissions, notifications } = useData();
-  const p = profile?.bankingProfile;
-  const pending = useIntent(profile!.id);
-  const draftKey = `${profile!.id}:${id || selectedService || "new"}`;
-  const draft = readDraft(draftKey);
   const [files, setFiles] = useState<File[]>(() => draft?.files || []);
-  const [combineImages, setCombineImages] = useState(draft?.combineImages || false);
+  const [combineImages, setCombineImages] = useState(
+    draft?.combineImages ?? draftMeta?.combineImages ?? false,
+  );
   const [progress, setProgress] = useState(0);
   const [existingSupport, setExistingSupport] = useState(false);
   const submitting = useRef(false);
@@ -65,32 +98,36 @@ export function DigitalForm() {
       draft?.values || {
         requestType: serviceRequests
           .map((request) => request.value)
-          .includes(query.get("requestType") || "")
-          ? query.get("requestType")!
+          .includes(query.get("requestType") || draftMeta?.requestType || "")
+          ? (query.get("requestType") || draftMeta?.requestType)!
           : "ADDRESS_CHANGE",
-        accountType: p?.accountType || "SAVINGS",
-        currency: p?.currency || "SGD",
+        accountType: draftMeta?.accountType || p?.accountType || "SAVINGS",
+        currency: draftMeta?.currency || p?.currency || "SGD",
         mailingAddress:
-          query.get("requestType") === "RESIDENTIAL_ADDRESS_CHANGE"
+          (query.get("requestType") || draftMeta?.requestType) === "RESIDENTIAL_ADDRESS_CHANGE"
             ? p?.residentialAddress || ""
             : p?.mailingAddress || "",
         email: p?.email || "",
         mobile: p?.mobile || "",
         occupation: "",
-        taxResidency: p?.taxResidency || "Singapore",
+        taxResidency: draftMeta?.taxResidency || p?.taxResidency || "Singapore",
         foreignTaxCountry: "",
         taxIdentifier: "",
         declarationDate: today(),
-        taxDeclaration: false,
+        taxDeclaration: draftMeta?.taxDeclaration ?? false,
         authorisation: false,
       },
   );
 
-  const [addressReady, setAddressReady] = useState(draft?.addressReady ?? !!id);
+  const [addressReady, setAddressReady] = useState(
+    draft?.addressReady ?? draftMeta?.addressReady ?? !!id,
+  );
   const [loading, setLoading] = useState(!!id);
   const [loaded, setLoaded] = useState(!id);
   const [busy, setBusy] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState("");
+  const [recoveryNotice, setRecoveryNotice] = useState("");
   const [locked, setLocked] = useState(false);
   const [retry, setRetry] = useState(draft?.retry || false);
   const intent = useRef<{
@@ -100,6 +137,7 @@ export function DigitalForm() {
   } | null>(draft?.intent || null);
   useEffect(() => {
     saveDraft(draftKey, {
+      stage,
       values,
       files,
       combineImages,
@@ -107,7 +145,7 @@ export function DigitalForm() {
       retry,
       intent: intent.current,
     });
-  }, [draftKey, values, files, combineImages, addressReady, retry]);
+  }, [draftKey, stage, values, files, combineImages, addressReady, retry]);
 
   useEffect(() => {
     if (!id) return;
@@ -124,7 +162,7 @@ export function DigitalForm() {
       .then(([form, detail]) => {
         if (!controller.signal.aborted) {
           setValues({
-            ...(draft?.values || form.values),
+            ...(draft?.values || normaliseFormValues(form.values)),
             authorisation: false,
             expectedRevision: detail.submission.revision,
           });
@@ -213,6 +251,7 @@ export function DigitalForm() {
     setBusy(true);
     setProgress(0);
     setError("");
+    setRecoveryNotice("");
     if (!intent.current) {
       intent.current = {
         key: crypto.randomUUID(),
@@ -232,7 +271,31 @@ export function DigitalForm() {
         }),
       };
     }
+    const targetPath =
+      (id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms") +
+      (intent.current.multipart ? "/with-documents" : "");
+    const returnTo = id
+      ? `/submissions/${id}/form`
+      : `/submit/digital?step=${stage}&requestType=${encodeURIComponent(values.requestType)}`;
+    try {
+      const persistedIntent = await buildEformIntentRecord({
+        key: intent.current.key,
+        customerId: profile!.id,
+        path: targetPath,
+        returnTo,
+        requestType: values.requestType,
+        submissionId: id,
+        multipart: intent.current.multipart,
+        combineImages,
+        body: intent.current.body,
+        files,
+      });
+      saveEformIntent(persistedIntent);
+    } catch {
+      /* Storage or SubtleCrypto may be unavailable; in-memory intent remains active. */
+    }
     saveDraft(draftKey, {
+      stage,
       values,
       files,
       combineImages,
@@ -251,8 +314,7 @@ export function DigitalForm() {
         multipart.append("combineImages", String(combineImages));
       }
       const result = await api<Detail>(
-        (id ? `/submissions/${encodeURIComponent(id)}/eform` : "/eforms") +
-          (intent.current.multipart ? "/with-documents" : ""),
+        targetPath,
         {
           method: "POST",
           headers: {
@@ -279,21 +341,38 @@ export function DigitalForm() {
         );
       }
       intent.current = null;
+      clearEformIntent(profile!.id);
       clearDraft(draftKey);
       void submissions.refresh();
       void notifications.refresh();
       navigate(`/submissions/${result.submission.id}`);
     } catch (e) {
-      const uncertain = !(
-        e &&
-        typeof e === "object" &&
-        "status" in e &&
-        typeof e.status === "number" &&
-        e.status >= 400 &&
-        e.status < 500
-      );
+      const inFlightCode =
+        e instanceof ApiError &&
+        (e.code === "REQUEST_IN_PROGRESS" || e.code === "IDEMPOTENCY_IN_PROGRESS");
+      const uncertain =
+        inFlightCode ||
+        !(
+          e &&
+          typeof e === "object" &&
+          "status" in e &&
+          typeof e.status === "number" &&
+          e.status >= 400 &&
+          e.status < 500
+        );
       if (!uncertain) {
         intent.current = null;
+        clearEformIntent(profile!.id);
+        if (id) {
+          void api<Detail>(`/submissions/${encodeURIComponent(id)}`)
+            .then((detail) => {
+              setValues((v) => ({
+                ...v,
+                expectedRevision: detail.submission.revision,
+              }));
+            })
+            .catch(() => {});
+        }
         if (
           e instanceof ApiError &&
           files.length > 0 &&
@@ -303,7 +382,7 @@ export function DigitalForm() {
             "UNSUPPORTED_DOCUMENT", "EDIT_EFORM"].includes(e.code)
         ) {
           setStage(2);
-          saveDraft(draftKey, { values, files, combineImages, addressReady, retry: false, intent: null });
+          saveDraft(draftKey, { stage: 2, values, files, combineImages, addressReady, retry: false, intent: null });
         }
       }
       setRetry(uncertain);
@@ -315,6 +394,68 @@ export function DigitalForm() {
       setBusy(false);
     }
   }
+
+  const checkedPendingKey = useRef<string | null>(null);
+  async function verifyPendingIntent(key: string, wasMultipart: boolean) {
+    if (checkingStatus) return;
+    setCheckingStatus(true);
+    setError("");
+    setRecoveryNotice("");
+    try {
+      const status = await checkRequestStatus(key);
+      if (status.inProgress) {
+        setError(
+          "Your earlier request is still being processed. Wait a moment and check status again before editing.",
+        );
+        return;
+      }
+      if (status.found && status.submissionId) {
+        intent.current = null;
+        clearEformIntent(profile!.id);
+        clearDraft(draftKey);
+        setRetry(false);
+        void submissions.refresh();
+        void notifications.refresh();
+        navigate(`/submissions/${status.submissionId}`);
+        return;
+      }
+      intent.current = null;
+      clearEformIntent(profile!.id);
+      setRetry(false);
+      saveDraft(draftKey, {
+        stage,
+        values,
+        files,
+        combineImages,
+        addressReady,
+        retry: false,
+        intent: null,
+      });
+      setRecoveryNotice(
+        wasMultipart
+          ? "Confirmed that the previous attempt was not received. You can safely review and edit your request or files."
+          : "Confirmed that the previous attempt was not received. You can safely review and edit your request.",
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Unable to confirm the status of your earlier request. Keep this tab or check My requests before submitting again.",
+      );
+    } finally {
+      setCheckingStatus(false);
+    }
+  }
+
+  const unresolvedAfterRefresh =
+    !!eformPending && (!intent.current || intent.current.key !== eformPending.key);
+
+  useEffect(() => {
+    if (!eformPending || !unresolvedAfterRefresh) return;
+    if (checkedPendingKey.current === eformPending.key) return;
+    checkedPendingKey.current = eformPending.key;
+    void verifyPendingIntent(eformPending.key, eformPending.multipart);
+  }, [eformPending, unresolvedAfterRefresh]);
 
   if (loading) return <Loading text="Loading your service request..." />;
   if (!loaded || !p)
@@ -342,6 +483,33 @@ export function DigitalForm() {
           Resume upload
         </Link>
       </Notice>
+    );
+  }
+  if (unresolvedAfterRefresh && eformPending) {
+    return (
+      <div className="page-stack">
+        <PageHeader title="Confirm earlier request" />
+        <Panel title="Unconfirmed submission detected">
+          <Notice>
+            An earlier {serviceLabel(eformPending.requestType).toLowerCase()} submission did not receive final confirmation before this page reloaded. We are verifying whether it reached the system so duplicate requests are not created.
+          </Notice>
+          {error && <ErrorBox message={error} />}
+          {checkingStatus && <Loading text="Checking request status..." />}
+          <div className="form-actions" style={{ borderTop: 0, marginTop: 12 }}>
+            <button
+              type="button"
+              className="button primary"
+              disabled={checkingStatus}
+              onClick={() => void verifyPendingIntent(eformPending.key, eformPending.multipart)}
+            >
+              {checkingStatus ? "Checking status..." : "Check request status"}
+            </button>
+            <Link className="button secondary" to="/submissions">
+              View My requests
+            </Link>
+          </div>
+        </Panel>
+      </div>
     );
   }
 
@@ -784,6 +952,7 @@ export function DigitalForm() {
             </div>
           )}
           {error && <ErrorBox message={error} />}
+          {recoveryNotice && <Notice>{recoveryNotice}</Notice>}
           {retry && (
             <Notice>
               The outcome is unconfirmed. Retry the same request in this tab or
@@ -798,24 +967,35 @@ export function DigitalForm() {
             >
               <div className="step-back-actions">
                 {retry ? (
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      intent.current = null;
-                      setRetry(false);
-                      setError("");
-                      saveDraft(draftKey, { values, files, combineImages, addressReady, retry: false, intent: null });
-                    }}
-                  >
-                    Edit request &amp; files
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      disabled={busy || checkingStatus}
+                      onClick={() => {
+                        if (intent.current) {
+                          void verifyPendingIntent(
+                            intent.current.key,
+                            intent.current.multipart,
+                          );
+                        } else if (eformPending) {
+                          void verifyPendingIntent(
+                            eformPending.key,
+                            eformPending.multipart,
+                          );
+                        }
+                      }}
+                    >
+                      {checkingStatus
+                        ? "Checking status..."
+                        : "Check status & edit"}
+                    </button>
+                  </>
                 ) : stage > 0 && (
                   <button
                     type="button"
                     className="button secondary"
-                    disabled={busy || retry}
+                    disabled={busy || retry || checkingStatus}
                     onClick={() => stage === 1 && selectedService && !id ? navigate("/submit") : setStage(stage - 1)}
                   >
                     <ArrowLeft size={16} />
@@ -827,6 +1007,7 @@ export function DigitalForm() {
                 className="button primary"
                 disabled={
                   busy ||
+                  checkingStatus ||
                   locked ||
                   (!retry &&
                     stage !== 0 &&

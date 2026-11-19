@@ -197,6 +197,7 @@ function SubmittedDetails({ id }: { id: string }) {
   );
   const labels: Record<string, string> = {
     mailingAddress: "Requested address",
+    residentialAddress: "Residential address",
     email: "Email",
     mobile: "Mobile number",
     accountType: "Account type",
@@ -416,7 +417,12 @@ export function SubmissionDetail() {
                 <div>
                   <h3>{request.instruction}</h3>
                   <div className="correction-actions">
-                    {["SERVICE_OTP", "SERVICE_PHONE"].includes(
+                    {[
+                      "SERVICE_OTP",
+                      "SERVICE_PHONE",
+                      "SERVICE_CONTACT_VERIFIED",
+                      "SERVICE_PHONE_REVIEW",
+                    ].includes(
                       request.ruleKey || "",
                     ) ? (
                       <a
