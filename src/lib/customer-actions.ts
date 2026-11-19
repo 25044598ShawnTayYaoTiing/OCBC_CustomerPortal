@@ -19,10 +19,29 @@ export function customerActions(detail: Detail): Correction[] {
     !/[A-Z]{3,}_[A-Z_]+/.test(text) &&
     text !== "Original instruction" &&
     !text.startsWith("Upload a supporting PDF");
+  const attachRule = detail.corrections.find(
+    (r) => r.ruleKey === "ATTACH_SUPPORTING_DOCUMENT",
+  );
+  const serviceSupportRule = detail.corrections.find(
+    (r) => r.ruleKey === "SERVICE_SUPPORT",
+  );
+  const dropServiceSupport =
+    supportMissing &&
+    hasAttachment &&
+    (!hasSpecificInstruction(serviceSupportRule?.instruction) ||
+      serviceSupportRule?.instruction === attachRule?.instruction ||
+      hasSpecificInstruction(attachRule?.instruction));
+  const dropAttachDoc =
+    supportMissing &&
+    hasAttachment &&
+    !dropServiceSupport &&
+    hasSpecificInstruction(serviceSupportRule?.instruction) &&
+    !hasSpecificInstruction(attachRule?.instruction);
   return detail.corrections
     .filter(
       (r) =>
-        !(supportMissing && hasAttachment && r.ruleKey === "SERVICE_SUPPORT"),
+        !(dropServiceSupport && r.ruleKey === "SERVICE_SUPPORT") &&
+        !(dropAttachDoc && r.ruleKey === "ATTACH_SUPPORTING_DOCUMENT"),
     )
     .map((r) => ({
       ...r,

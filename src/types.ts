@@ -39,6 +39,9 @@ export interface Document {
   version: number;
   filename: string;
   captureMethod?: string;
+  documentRole?: string;
+  evidenceEligible?: boolean;
+  evidenceEligibilityReason?: string;
 }
 export interface Correction {
   id: string;

@@ -20,3 +20,27 @@ test('cancelled requests do not offer historical correction actions',()=>{
  assert.deepEqual(customerActions({...detail,submission:{...detail.submission,status:'CANCELLED'}}),[]);
  assert.match(requestNextStep('CANCELLED',3),/cancelled.*No further processing/);
 });
+
+test('unsuitable attachment keeps specific explanation instead of generic attachment prompt',()=>{
+ const msg='Uploaded file wrong.pdf was classified as a tax residency declaration form.';
+ const withSpecificService=customerActions({
+  submission:{requestType:'ADDRESS_CHANGE'},
+  documents:[{id:'FILE-1',type:'TAX_RESIDENCY',documentRole:'UNSUITABLE_SUPPORT_ATTACHMENT',evidenceEligible:false}],
+  corrections:[
+   {id:'ATTACH_SUPPORTING_DOCUMENT',ruleKey:'ATTACH_SUPPORTING_DOCUMENT',instruction:'Original instruction',documentIds:[]},
+   {id:'SERVICE_SUPPORT',ruleKey:'SERVICE_SUPPORT',instruction:msg,documentIds:['FILE-1']}
+  ]
+ });
+ assert.equal(withSpecificService.length,1);
+ assert.equal(withSpecificService[0].instruction,msg);
+ const withBothSpecific=customerActions({
+  submission:{requestType:'ADDRESS_CHANGE'},
+  documents:[{id:'FILE-1',type:'TAX_RESIDENCY',documentRole:'UNSUITABLE_SUPPORT_ATTACHMENT',evidenceEligible:false}],
+  corrections:[
+   {id:'ATTACH_SUPPORTING_DOCUMENT',ruleKey:'ATTACH_SUPPORTING_DOCUMENT',instruction:msg,documentIds:['FILE-1']},
+   {id:'SERVICE_SUPPORT',ruleKey:'SERVICE_SUPPORT',instruction:msg,documentIds:['FILE-1']}
+  ]
+ });
+ assert.equal(withBothSpecific.length,1);
+ assert.equal(withBothSpecific[0].instruction,msg);
+});

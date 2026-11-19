@@ -22,7 +22,7 @@ export function AddressFields({value,onChange,onReady,existing=false}:{value:str
     {result && result.candidates.length>0 && <fieldset className="address-choices"><legend>Select your building address</legend>{result.candidates.map(c=><label key={c.id}><input type="radio" name="address-candidate" checked={selected?.id===c.id} onChange={()=>choose(c)}/><span>{c.address}</span></label>)}</fieldset>}
     {result && !result.candidates.length && !error && <p role="status">No address found. Check the postal code or request a manual review.</p>}
     {selected && <><p className="address-confirmed" role="status">Building address found. We will check it again when you submit.</p><label>Unit number (if applicable)<input value={unit} maxLength={30} placeholder="#12-34" onChange={e=>{setUnit(e.target.value);onChange(selected.address+(e.target.value?`, Unit ${e.target.value}`:''));}}/></label><small>The lookup confirms the building address only. It does not verify your unit, identity or occupancy.</small></>}
-    {!selected && <button type="button" className="text-button" onClick={()=>{setManual(true);onReady(false);}}>Enter address for manual review</button>}
+    {!selected && <button type="button" className="text-button" onClick={()=>{setManual(true);onReady(!!value.trim());}}>Enter address for manual review</button>}
     {manual && <label>Requested address<input required value={value} maxLength={500} onChange={e=>{onChange(e.target.value);onReady(!!e.target.value.trim());}}/><small>This address is unverified. It will require supporting evidence and review.</small></label>}
   </div>;
 }

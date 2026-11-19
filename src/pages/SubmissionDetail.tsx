@@ -285,10 +285,17 @@ export function SubmissionDetail() {
       setTarget({ request });
       return;
     }
-    const uploaded = data!.documents.filter((d) => d.captureMethod !== "DIGITAL_EFORM");
+    const uploaded = data!.documents.filter(
+      (d) => d.documentRole !== "DECLARATION_RECEIPT" && d.captureMethod !== "DIGITAL_EFORM",
+    );
     const replaceable =
       ["ATTACH_SUPPORTING_DOCUMENT", "SERVICE_SUPPORT"].includes(request.ruleKey || "")
-        ? uploaded.find((d) => d.type === "UNKNOWN") || (uploaded.length === 1 ? uploaded[0] : undefined)
+        ? uploaded.find(
+            (d) =>
+              d.documentRole === "UNSUITABLE_SUPPORT_ATTACHMENT" ||
+              d.evidenceEligible === false ||
+              d.type === "UNKNOWN",
+          ) || (uploaded.length === 1 ? uploaded[0] : undefined)
         : undefined;
     setTarget(replaceable ? { request, document: replaceable } : { request, add: true });
   }
@@ -550,20 +557,27 @@ export function SubmissionDetail() {
       >
         {data.documents.length ? (
           <ul className="document-records">
-            {data.documents.map((document) => (
+            {data.documents.map((document) => {
+              const isDeclarationReceipt =
+                document.documentRole === "DECLARATION_RECEIPT" ||
+                document.captureMethod === "DIGITAL_EFORM";
+              const roleLabel = isDeclarationReceipt
+                ? "Your submitted declaration"
+                : document.documentRole === "UNSUITABLE_SUPPORT_ATTACHMENT"
+                  ? `${titleCase(document.type)} · Not eligible as supporting proof${document.evidenceEligibilityReason ? ` — ${document.evidenceEligibilityReason}` : ""}`
+                  : document.documentRole === "UNCLASSIFIED_ATTACHMENT"
+                    ? "Document could not be verified — upload a clearer copy or valid proof"
+                    : document.evidenceEligibilityReason || "Supporting document";
+              return (
               <li key={document.id}>
                 <span className="file-icon">
                   <FileText size={21} />
                 </span>
                 <div>
                   <strong>{document.filename}</strong>
-                  <p>
-                    {document.captureMethod === "DIGITAL_EFORM"
-                      ? "Your submitted declaration"
-                      : "Supporting document"}
-                  </p>
+                  <p>{roleLabel}</p>
                 </div>
-                {!locked && document.captureMethod !== "DIGITAL_EFORM" && (
+                {!locked && !isDeclarationReceipt && (
                   <button
                     className="text-button"
                     onClick={() => setTarget({ document })}
@@ -572,7 +586,8 @@ export function SubmissionDetail() {
                   </button>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         ) : (
           <Empty
