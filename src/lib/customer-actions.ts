@@ -40,6 +40,15 @@ export function customerActions(detail: Detail): Correction[] {
   return detail.corrections
     .filter(
       (r) =>
+        !(
+          detail.submission.requestType === "CONTACT_UPDATE" &&
+          [
+            "SERVICE_OTP",
+            "SERVICE_PHONE",
+            "SERVICE_CONTACT_VERIFIED",
+            "SERVICE_PHONE_REVIEW",
+          ].includes(r.ruleKey || "")
+        ) &&
         !(dropServiceSupport && r.ruleKey === "SERVICE_SUPPORT") &&
         !(dropAttachDoc && r.ruleKey === "ATTACH_SUPPORTING_DOCUMENT"),
     )
@@ -62,7 +71,7 @@ export function customerActions(detail: Detail): Correction[] {
                 : r.instruction,
     }));
 }
-export function requestNextStep(status: string, actions: number): string {
+export function requestNextStep(status: string, actions: number, requestType?: string): string {
   if (status === "ON_HOLD") return "Resolution Management has paused processing. No action is needed right now.";
   if (status === "CANCELLED")
     return "You cancelled this request. No further processing will take place.";
@@ -70,6 +79,8 @@ export function requestNextStep(status: string, actions: number): string {
     return "Your request is complete. Check your profile for any updates.";
   if (status === "REJECTED")
     return "Your request was not approved. Check the updates below for the decision.";
+  if (requestType === "CONTACT_UPDATE" && actions === 0)
+    return "Verify your new email address below to complete this request.";
   if (actions)
     return "We’ll check your update when you send it.";
   if (status === "PENDING_VALIDATION")

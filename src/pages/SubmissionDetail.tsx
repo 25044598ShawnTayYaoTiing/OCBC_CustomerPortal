@@ -240,7 +240,7 @@ function SubmittedDetails({ id }: { id: string }) {
 export function SubmissionDetail() {
   const { id = "" } = useParams();
   const result = useResource<Detail>(`/submissions/${encodeURIComponent(id)}`);
-  const { notifications } = useData();
+  const { submissions, notifications } = useData();
   const { profile, refreshProfile } = useAuth();
   const pending = useIntent(profile!.id);
   const eformPending = useEformIntent(profile!.id);
@@ -415,7 +415,7 @@ export function SubmissionDetail() {
                 ? "What happens next"
                 : "What happens next"}
         </h2>
-        <p>{requestNextStep(data.submission.status, actions.length)}</p>
+        <p>{requestNextStep(data.submission.status, actions.length, data.submission.requestType)}</p>
       </section>
       {data.submission.status !== "CANCELLED" && <CancelRequest
         submission={data.submission}
@@ -484,6 +484,8 @@ export function SubmissionDetail() {
             onUpdate={() => {
               void result.refresh();
               void notifications.refresh();
+              void submissions.refresh();
+              void refreshProfile().catch(() => {});
             }}
           />
         </div>

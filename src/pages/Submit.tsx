@@ -110,7 +110,7 @@ export function Submit() {
 }
 
 function PdfSubmit() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const pending = useIntent(profile!.id);
   const draft = readPdfDraft(profile!.id);
   const [requestType, setRequestType] = useState(
@@ -359,6 +359,9 @@ function PdfSubmit() {
                         clearPdfDraft(profile!.id);
                         setConfirmed(result);
                         setStep(3);
+                        if (result.submission.status === "OPERATIONS") {
+                          void refreshProfile().catch(() => {});
+                        }
                       }
                     }}
                   >

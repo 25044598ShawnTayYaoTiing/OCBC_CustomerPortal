@@ -58,7 +58,7 @@ function normaliseFormValues(raw: DigitalValues): DigitalValues {
 
 export function DigitalForm() {
   const { id } = useParams();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { submissions, notifications } = useData();
   const p = profile?.bankingProfile;
@@ -92,6 +92,12 @@ export function DigitalForm() {
   const [progress, setProgress] = useState(0);
   const [existingSupport, setExistingSupport] = useState(false);
   const submitting = useRef(false);
+  const [confirmEmail, setConfirmEmail] = useState(
+    () =>
+      (query.get("requestType") || draftMeta?.requestType) === "CONTACT_UPDATE"
+        ? draft?.values?.email || ""
+        : p?.email || "",
+  );
 
   const [values, setValues] = useState<DigitalValues>(
     () =>
@@ -107,7 +113,7 @@ export function DigitalForm() {
           (query.get("requestType") || draftMeta?.requestType) === "RESIDENTIAL_ADDRESS_CHANGE"
             ? p?.residentialAddress || ""
             : p?.mailingAddress || "",
-        email: p?.email || "",
+        email: (query.get("requestType") || draftMeta?.requestType) === "CONTACT_UPDATE" ? "" : (p?.email || ""),
         mobile: p?.mobile || "",
         occupation: "",
         taxResidency: draftMeta?.taxResidency || p?.taxResidency || "Singapore",
@@ -161,11 +167,13 @@ export function DigitalForm() {
     ])
       .then(([form, detail]) => {
         if (!controller.signal.aborted) {
+          const loadedValues = draft?.values || normaliseFormValues(form.values);
           setValues({
-            ...(draft?.values || normaliseFormValues(form.values)),
+            ...loadedValues,
             authorisation: false,
             expectedRevision: detail.submission.revision,
           });
+          setConfirmEmail(loadedValues.email || "");
           setLocked(
             ["OPERATIONS", "CANCELLED", "ON_HOLD"].includes(detail.submission.status),
           );
@@ -222,8 +230,18 @@ export function DigitalForm() {
       !values.sourceOfFunds?.trim()
     )
       return "Provide a source-of-funds description for this current-account request.";
-    if (contact && values.email === p?.email && values.mobile === p?.mobile)
-      return "Change your email, phone number, or both before continuing.";
+    if (contact) {
+      const nextEmail = values.email.trim();
+      const confirmed = confirmEmail.trim();
+      if (!nextEmail || !confirmed)
+        return "Enter and confirm your new email address before continuing.";
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(nextEmail))
+        return "Enter a valid new email address.";
+      if (nextEmail.toLowerCase() !== confirmed.toLowerCase())
+        return "New email address and confirmation do not match.";
+      if (p?.email && nextEmail.toLowerCase() === p.email.trim().toLowerCase())
+        return "Enter a new email address that differs from your current registered email.";
+    }
     return "";
   }
   async function submit() {
@@ -262,8 +280,8 @@ export function DigitalForm() {
           currency: additionalAccount ? values.currency : null,
           occupation: null,
           mailingAddress: address ? values.mailingAddress : null,
-          email: contact ? values.email : null,
-          mobile: contact ? values.mobile : null,
+          email: contact ? values.email.trim() : null,
+          mobile: null,
           taxResidency: tax ? values.taxResidency : null,
           taxDeclaration: tax && values.taxDeclaration,
           foreignTaxCountry: foreign ? values.foreignTaxCountry : null,
@@ -345,6 +363,9 @@ export function DigitalForm() {
       clearDraft(draftKey);
       void submissions.refresh();
       void notifications.refresh();
+      if (result.submission.status === "OPERATIONS") {
+        void refreshProfile().catch(() => {});
+      }
       navigate(`/submissions/${result.submission.id}`);
     } catch (e) {
       const inFlightCode =
@@ -673,6 +694,7 @@ export function DigitalForm() {
                       setValues((v) => ({
                         ...v,
                         requestType: nextType,
+                        email: nextType === "CONTACT_UPDATE" ? "" : (v.email || p?.email || ""),
                         mailingAddress:
                           nextType === "RESIDENTIAL_ADDRESS_CHANGE"
                             ? p?.residentialAddress || ""
@@ -680,6 +702,7 @@ export function DigitalForm() {
                               ? p?.mailingAddress || ""
                               : v.mailingAddress,
                       }));
+                      if (nextType === "CONTACT_UPDATE") setConfirmEmail("");
                       setAddressReady(false);
                     }}
                   >
@@ -765,35 +788,35 @@ export function DigitalForm() {
             )}
             {contact && (
               <Panel
-                title="Contact-detail update"
-                description="Change your email, phone number, or both."
+                title="Change email address"
+                description="Enter and confirm your new email address."
               >
                 <div className="eform-fields">
                   <label>
-                    New email
+                    New email address
                     <input
                       type="email"
+                      required={contact}
                       maxLength={254}
                       value={values.email}
                       onChange={(e) => update("email", e.target.value)}
                     />
                   </label>
                   <label>
-                    New phone number
+                    Confirm new email address
                     <input
-                      type="tel"
-                      maxLength={40}
-                      value={values.mobile}
-                      onChange={(e) => update("mobile", e.target.value)}
+                      type="email"
+                      required={contact}
+                      maxLength={254}
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
                     />
                   </label>
                 </div>
                 <div className="form-body" style={{ paddingTop: 0 }}>
                   <Notice>
-                    After submission, verify an email OTP. A changed email is
-                    verified at the new address; a phone-only change uses your
-                    registered email to authorise the request. New phone
-                    ownership still requires independent staff verification.
+                    After submitting, verify your new email address with a 6-digit
+                    verification code sent to that address.
                   </Notice>
                 </div>
               </Panel>
@@ -943,16 +966,10 @@ export function DigitalForm() {
                   </div>
                 )}
                 {contact && (
-                  <>
-                    <div>
-                      <dt>Email</dt>
-                      <dd>{values.email || "Unchanged"}</dd>
-                    </div>
-                    <div>
-                      <dt>Phone</dt>
-                      <dd>{values.mobile || "Unchanged"}</dd>
-                    </div>
-                  </>
+                  <div>
+                    <dt>New email address</dt>
+                    <dd>{values.email.trim()}</dd>
+                  </div>
                 )}
                 {tax && (
                   <>
@@ -1164,8 +1181,7 @@ export function DigitalForm() {
 
               />
               <p>
-                Your request is sent for processing only after required checks
-                and approval.
+                Your request is completed only after required checks and approval.
               </p>
             </div>
           </aside>
