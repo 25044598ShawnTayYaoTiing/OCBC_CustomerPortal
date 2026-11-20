@@ -12,12 +12,13 @@ export function SubmissionTable({ items }: { items: Submission[] }) {
 export const notificationTitle: Record<string, string> = {
   SUBMISSION_RECEIVED: 'Documents received', VALIDATION_COMPLETED: 'Document checks completed',
   CORRECTION_REQUIRED: 'A little more information is needed', CORRECTION_RECEIVED: 'Updated documents received',
-  OPERATIONS_READY: 'Your request was sent for processing', RESOLUTION_MANAGEMENT: 'Your request is under review',
+  OPERATIONS_READY: 'Your request was approved for processing', RESOLUTION_MANAGEMENT: 'Your request is under review',
+  REQUEST_CANCELLED: 'Your request was cancelled',
 };
 export function NotificationList({ items, compact = false }: { items: Notification[]; compact?: boolean }) {
   if (!items.length) return <Empty title="You're all caught up" description="Updates about your documents and applications will appear here." />;
   return <div className={`notification-list ${compact ? 'compact' : ''}`}>{items.map(n => {
     const Icon = n.type === 'CORRECTION_REQUIRED' ? CircleAlert : n.type === 'OPERATIONS_READY' ? CheckCircle2 : n.type === 'SUBMISSION_RECEIVED' ? Inbox : n.type === 'VALIDATION_COMPLETED' ? FileCheck2 : Bell;
-    return <Link key={n.id} to={`/submissions/${n.submissionId}`} className={`notification-row ${n.type === 'CORRECTION_REQUIRED' ? 'needs-action' : ''}`}><span className="notification-icon"><Icon size={19} /></span><div><strong>{notificationTitle[n.type] || 'Application update'}</strong><small>{shortReference(n.submissionId)} · {date(n.createdAt, true)}</small></div><ArrowRight size={16} /></Link>;
+    return <Link key={n.id} to={`/submissions/${n.submissionId}`} className={`notification-row ${n.type === 'CORRECTION_REQUIRED' ? 'needs-action' : ''}`}><span className="notification-icon"><Icon size={19} /></span><div><strong>{notificationTitle[n.type] || 'Application update'}</strong>{n.type === 'REQUEST_CANCELLED' && <small>{n.message}</small>}<small>{shortReference(n.submissionId)} · {date(n.createdAt, true)}</small></div><ArrowRight size={16} /></Link>;
   })}</div>;
 }

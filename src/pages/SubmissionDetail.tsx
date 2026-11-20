@@ -259,7 +259,7 @@ export function SubmissionDetail() {
   useEffect(() => {
     if (
       data &&
-      ["OPERATIONS", "CANCELLED"].includes(data.submission.status) &&
+      ["OPERATIONS", "CANCELLED", "ON_HOLD"].includes(data.submission.status) &&
       eformPending &&
       (eformPending.incompleteSubmissionId === id || eformPending.submissionId === id)
     ) {
@@ -275,7 +275,7 @@ export function SubmissionDetail() {
       />
     );
   const digital = data.submission.captureMethod === "DIGITAL_EFORM";
-  const locked = ["OPERATIONS", "CANCELLED"].includes(data.submission.status);
+  const locked = ["OPERATIONS", "CANCELLED", "ON_HOLD"].includes(data.submission.status);
   const actions = customerActions(data);
   const activities = (notifications.data || []).filter(
     (n) => n.submissionId === id,

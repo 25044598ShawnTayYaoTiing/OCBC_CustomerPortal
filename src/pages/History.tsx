@@ -1,4 +1,4 @@
-﻿import { FilePlus2, Search } from "lucide-react";
+import { FilePlus2, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "../data";
@@ -24,7 +24,7 @@ export function History() {
         (status === "all" ||
           item.status === status ||
           (status === "RESOLUTION_MANAGEMENT" &&
-            ["HUMAN_REVIEW", "ON_HOLD"].includes(item.status))) &&
+            item.status === "HUMAN_REVIEW")) &&
         item.caseReference.toLowerCase().includes(query.toLowerCase()),
     )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -58,7 +58,7 @@ export function History() {
           >
             <option value="all">All statuses</option>
             {Object.entries(statusLabels)
-              .filter(([key]) => !["HUMAN_REVIEW", "ON_HOLD"].includes(key))
+              .filter(([key]) => key !== "HUMAN_REVIEW")
               .map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}

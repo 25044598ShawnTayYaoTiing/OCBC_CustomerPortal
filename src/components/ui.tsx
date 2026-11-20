@@ -48,8 +48,8 @@ export const statusLabels: Record<string, string> = {
   HUMAN_REVIEW: "Under review",
   RESOLUTION_MANAGEMENT: "Under review",
   READY: "Awaiting processing",
-  OPERATIONS: "Sent for processing",
-  ON_HOLD: "Under review",
+  OPERATIONS: "Completed",
+  ON_HOLD: "Suspended",
   REJECTED: "Rejected",
   COMPLETED: "Completed",
 };

@@ -167,7 +167,7 @@ export function DigitalForm() {
             expectedRevision: detail.submission.revision,
           });
           setLocked(
-            ["OPERATIONS", "CANCELLED"].includes(detail.submission.status),
+            ["OPERATIONS", "CANCELLED", "ON_HOLD"].includes(detail.submission.status),
           );
           setExistingSupport(
             detail.documents.some(

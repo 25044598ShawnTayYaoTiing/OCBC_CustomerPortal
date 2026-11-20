@@ -1,6 +1,6 @@
 import type { Correction, Detail } from "../types";
 export function customerActions(detail: Detail): Correction[] {
-  if (detail.submission.status === "CANCELLED") return [];
+  if (["CANCELLED", "OPERATIONS", "ON_HOLD"].includes(detail.submission.status)) return [];
   const supportMissing = !detail.documents.some(
     (d) => d.type === "SUPPORTING_DOCUMENT",
   );
@@ -63,6 +63,7 @@ export function customerActions(detail: Detail): Correction[] {
     }));
 }
 export function requestNextStep(status: string, actions: number): string {
+  if (status === "ON_HOLD") return "Resolution Management has paused processing. No action is needed right now.";
   if (status === "CANCELLED")
     return "You cancelled this request. No further processing will take place.";
   if (status === "OPERATIONS")
