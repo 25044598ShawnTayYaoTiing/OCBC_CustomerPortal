@@ -1,5 +1,5 @@
 import { clearRequestDrafts } from "./lib/request-draft";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import {
@@ -19,6 +19,7 @@ interface Auth {
   reason: string;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 const Context = createContext<Auth | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,6 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", check);
     };
   }, [expiresAt]);
+  const customerId = profile?.id;
+  const refreshProfile = useCallback(async () => {
+    if (!customerId) return;
+    const updated = await api<Profile>("/me");
+    if (updated.id !== customerId || !updated.name)
+      throw new ApiError(502, "Your profile could not be refreshed.");
+    setProfile(current => current?.id === customerId ? updated : current);
+  }, [customerId]);
   const login = async (username: string, password: string) => {
     const session = await jsonPost<Session>(
       "/auth/token",
@@ -103,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   return (
-    <Context.Provider value={{ profile, expiresAt, reason, login, logout }}>
+    <Context.Provider value={{ profile, expiresAt, reason, login, logout, refreshProfile }}>
       {children}
     </Context.Provider>
   );

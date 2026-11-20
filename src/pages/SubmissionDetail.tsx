@@ -241,7 +241,7 @@ export function SubmissionDetail() {
   const { id = "" } = useParams();
   const result = useResource<Detail>(`/submissions/${encodeURIComponent(id)}`);
   const { notifications } = useData();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const pending = useIntent(profile!.id);
   const eformPending = useEformIntent(profile!.id);
   const [target, setTarget] = useState<UploadTarget | null>(null);
@@ -256,6 +256,13 @@ export function SubmissionDetail() {
     setRetryError("");
   }, [id]);
   const data = result.data;
+  const completed = data?.submission.status === "OPERATIONS";
+  useEffect(() => {
+    if (completed) void refreshProfile().catch(() => {
+      // The profile page retries when opened.
+    });
+  }, [completed, id, refreshProfile]);
+
   useEffect(() => {
     if (
       data &&

@@ -12,7 +12,7 @@ export function SubmissionTable({ items }: { items: Submission[] }) {
 export const notificationTitle: Record<string, string> = {
   SUBMISSION_RECEIVED: 'Documents received', VALIDATION_COMPLETED: 'Document checks completed',
   CORRECTION_REQUIRED: 'A little more information is needed', CORRECTION_RECEIVED: 'Updated documents received',
-  OPERATIONS_READY: 'Your request was approved for processing', RESOLUTION_MANAGEMENT: 'Your request is under review',
+  OPERATIONS_READY: 'Your request was completed', RESOLUTION_MANAGEMENT: 'Your request is under review',
   REQUEST_CANCELLED: 'Your request was cancelled',
 };
 export function NotificationList({ items, compact = false }: { items: Notification[]; compact?: boolean }) {

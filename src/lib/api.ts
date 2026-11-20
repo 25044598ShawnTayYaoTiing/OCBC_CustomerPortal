@@ -36,7 +36,7 @@ function errorMessage(status: number, code: string, message: string) {
   if (code === 'REQUEST_IN_PROGRESS' || code === 'IDEMPOTENCY_IN_PROGRESS') return 'Your request is still being processed. Wait a moment and check your request status before retrying or editing.';
   if (status >= 500) return 'Document processing is temporarily unavailable. The result of an upload may be uncertain; check My requests or retry the same upload.';
   if (status === 409 && code === 'IDEMPOTENCY_CONFLICT') return 'This retry does not match the original upload. Reselect the same files in their original order.';
-  if (status === 409 && code === 'ALREADY_ROUTED') return 'This application is already with Operations and cannot be changed.';
+  if (status === 409 && code === 'ALREADY_ROUTED') return 'This request is complete and cannot be changed.';
   if (code === 'EXTRACTION_FAILED' || code === 'EXTRACTION_INVALID') return 'We could not confirm the details in the document. Try a clear, complete copy.';
   if (code === 'DOCUMENT_AI_UNAVAILABLE') return 'Document review is temporarily unavailable. Try again shortly.';
   return message || 'The request could not be completed. Please try again.';

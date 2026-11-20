@@ -67,7 +67,7 @@ export function requestNextStep(status: string, actions: number): string {
   if (status === "CANCELLED")
     return "You cancelled this request. No further processing will take place.";
   if (status === "OPERATIONS")
-    return "Your request was sent for processing. No action is needed from you.";
+    return "Your request is complete. Check your profile for any updates.";
   if (status === "REJECTED")
     return "Your request was not approved. Check the updates below for the decision.";
   if (actions)

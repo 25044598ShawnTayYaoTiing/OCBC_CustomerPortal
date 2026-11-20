@@ -12,8 +12,8 @@ test('one missing supporting document produces one upload action while preservin
 test('existing supporting evidence retains its mismatch correction',()=>{
  const actions=customerActions({...detail,documents:[{type:'SUPPORTING_DOCUMENT'}],corrections:[task('SERVICE_SUPPORT')]});assert.equal(actions.length,1);assert.match(actions[0].instruction,/replacement document/);
 });
-test('Operations is described as processing rather than completed',()=>{
- assert.match(requestNextStep('OPERATIONS',0),/sent for processing/);assert.doesNotMatch(requestNextStep('OPERATIONS',0),/completed/i);
+test('Completed requests direct the customer to their updated profile',()=>{
+ assert.match(requestNextStep('OPERATIONS',0),/complete.*profile/);
 });
 
 test('cancelled requests do not offer historical correction actions',()=>{
